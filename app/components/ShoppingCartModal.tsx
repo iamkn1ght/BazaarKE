@@ -3,6 +3,8 @@
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { useShoppingCart } from "use-shopping-cart";
 import Image from "next/image";
+import KipkirenPayCheckout from "./KipkirenPayCheckout";
+import { formatKes } from "@/app/lib/rails/payment-rail/money";
 
 export default function ShoppingCartModal() {
     const { cartCount, shouldDisplayCart, handleCartClick, cartDetails, removeItem, totalPrice } = useShoppingCart();
@@ -28,7 +30,7 @@ export default function ShoppingCartModal() {
                                             <div>
                                                 <div className="flex justify-between text-base font-medium text-gray-900">
                                                     <h3>{entry.name}</h3>
-                                                    <p className="ml-4">KES {entry.price}</p>
+                                                    <p className="ml-4">{formatKes(entry.price)}</p>
                                                 </div>
                                                 <p className="mt-1 text-sm text-gray-500 line-clamp-2">{entry.description}</p>
                                             </div>
@@ -49,13 +51,11 @@ export default function ShoppingCartModal() {
                     <div className="border-t border-gray-200 px-4 py-6 sm:px-6">
                         <div className="flex justify-between text-base font-medium text-gray-900">
                             <p>Subtotal:</p>
-                            <p>KES {totalPrice || "0.00"}</p>
+                            <p>{formatKes(Math.round(totalPrice ?? 0))}</p>
                         </div>
                         <p className="mt-0.5 text-sm text-gray-500">Shipping and taxes are calculated at checkout.</p>
-                        <div className="mt-6 justify-center text-center">
-                            <p className="rounded-md border border-dashed border-gray-300 px-4 py-3 text-sm text-gray-500">
-                                Checkout is being upgraded to M-Pesa (Kipkiren Pay) and will be available shortly.
-                            </p>
+                        <div className="mt-6">
+                            <KipkirenPayCheckout />
                         </div>
                         <div className="mt-6 flex justify-center text-center text-sm text-gray-500">
                             <p>

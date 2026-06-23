@@ -2,6 +2,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { simplifiedProduct } from "../interface";
 import { client } from "../lib/sanity";
+import { formatKes } from "../lib/rails/payment-rail/money";
 
 export const metadata = {
     title: "All Products — Unique Accessories",
@@ -12,6 +13,7 @@ async function getData() {
     const query = `*[_type == "product"] | order(_createdAt desc) {
         _id,
         price,
+        price_minor,
         name,
         "slug": slug.current,
         "categoryName": category->name,
@@ -52,7 +54,7 @@ export default async function AllProductsPage() {
                                         </h3>
                                         <p className="mt-1 text-sm text-gray-500">{product.categoryName}</p>
                                     </div>
-                                    <p className="text-sm font-medium text-gray-900">${product.price}</p>
+                                    <p className="text-sm font-medium text-gray-900">{formatKes(product.price_minor ?? Math.round(product.price * 100))}</p>
                                 </div>
                             </div>
                         ))}

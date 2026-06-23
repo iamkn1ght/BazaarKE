@@ -6,12 +6,14 @@ import { client, urlFor } from "@/app/lib/sanity";
 import { fullProduct } from "@/app/interface";
 import ImageGallery from "@/app/components/imageGallery";
 import AddToBag from "@/app/components/AddToBag";
+import { formatKes, kesMinorToMajor } from "@/app/lib/rails/payment-rail/money";
 
 async function getData(slug: string) {
     const query = `*[_type == "product" && slug.current == $slug][0] {
         _id,
         images,
         price,
+        price_minor,
         name,
         description,
         "slug": slug.current,
@@ -42,6 +44,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
     const data = await getData(slug);
     if (!data) notFound();
 
+    const priceMinor = data.price_minor ?? Math.round(data.price * 100);
     const siteUrl = process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:3000";
     const productImage = data.images?.[0] ? urlFor(data.images[0]).url() : undefined;
     const jsonLd = {
@@ -53,8 +56,8 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
         category: data.categoryName,
         offers: {
             "@type": "Offer",
-            price: data.price,
-            priceCurrency: "USD",
+            price: kesMinorToMajor(priceMinor),
+            priceCurrency: "KES",
             availability: "https://schema.org/InStock",
             url: `${siteUrl}/product/${data.slug}`,
         },
@@ -87,10 +90,10 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
                         <div className="mb-4">
                             <div className="flex items-end gap-2">
                                 <span className="text-xl font-bold text-gray-800 md:text-2xl">
-                                    ${data.price}
+                                    {formatKes(priceMinor)}
                                 </span>
                                 <span className="mb-0.5 text-red-500 line-through">
-                                    ${data.price + 30}
+                                    {formatKes(priceMinor + 3000)}
                                 </span>
                             </div>
                             <span className="text-sm text-gray-500">
@@ -105,11 +108,11 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
                             <AddToBag
                                 key={data._id}
                                 id={data._id}
-                                currency="USD"
+                                currency="KES"
                                 description={data.description}
                                 image={data.images[0]}
                                 name={data.name}
-                                price={data.price}
+                                priceMinor={priceMinor}
                             />
                             
                         </div>

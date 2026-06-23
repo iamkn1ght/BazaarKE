@@ -9,7 +9,8 @@ export interface ProductCart {
     id: string;
     name: string;
     description: string;
-    price: number;
+    /** KES integer minor units (KES 50 = 5000). use-shopping-cart stores price in minor units. */
+    priceMinor: number;
     currency: string;
     image: SanityImageSource;
 }
@@ -20,7 +21,7 @@ export default function AddToBag({
   description,
   image,
   name,
-  price,
+  priceMinor,
 }: ProductCart) {
   const { addItem, handleCartClick } = useShoppingCart();
 
@@ -28,7 +29,7 @@ export default function AddToBag({
     id,
     name,
     description,
-    price,
+    price: priceMinor,
     currency,
     image: urlFor(image).url(),
     sku: id,

@@ -3,12 +3,14 @@ import Link from "next/link";
 import { simplifiedProduct } from "../interface";
 import { client } from "../lib/sanity";
 import Image from "next/image";
+import { formatKes } from "../lib/rails/payment-rail/money";
 
 async function getData(category: string) {
     const query = `*[_type == "product" && category->name == $category] {
         _id,
         "imageUrl": images[0].asset->url,
         price,
+        price_minor,
         name,
         "slug": slug.current,
         "categoryName": category->name
@@ -57,7 +59,7 @@ export default async function CategoryPage({ params }: { params: Promise<{ categ
                                     </h3>
                                     <p className="mt-1 text-sm text-gray-500">{product.categoryName}</p>
                                 </div>
-                                <p className="text-sm font-medium text-gray-900">${product.price}</p>
+                                <p className="text-sm font-medium text-gray-900">{formatKes(product.price_minor ?? Math.round(product.price * 100))}</p>
                             </div>
                         </div>
                     ))}
