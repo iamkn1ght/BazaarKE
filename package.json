@@ -7,10 +7,11 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "test": "tsx --test app/lib/rails/_shared/signRequest.test.ts app/lib/rails/payment-rail/money.test.ts",
+    "test": "tsx --test app/lib/rails/_shared/signRequest.test.ts app/lib/rails/payment-rail/money.test.ts app/lib/rails/todoku/templates.test.ts",
     "smoke:identiti": "node --conditions=react-server --import tsx scripts/smoke-identiti.ts",
     "migrate:sanity": "tsx scripts/migrate-sanity-paypal-to-kp.ts",
-    "smoke:payment-rail": "node --conditions=react-server --import tsx scripts/smoke-payment-rail.ts"
+    "smoke:payment-rail": "node --conditions=react-server --import tsx scripts/smoke-payment-rail.ts",
+    "smoke:todoku": "node --conditions=react-server --import tsx scripts/smoke-todoku.ts"
   },
   "dependencies": {
     "@radix-ui/react-dialog": "^1.1.3",
