@@ -76,7 +76,27 @@ export default {
       title: 'Itafika job ID',
       type: 'string',
       group: 'rail',
-      description: 'job_id from POST /v1/jobs (Itafika). Set on dispatch (Week 4).',
+      description: 'job_id from POST /v1/jobs (Itafika). Set on dispatch.',
+    },
+    {
+      name: 'delivery_fee_minor',
+      title: 'Delivery fee (KES minor units)',
+      type: 'number',
+      group: 'rail',
+      description: 'Itafika quote price_minor at dispatch. KP-16 charging is observe-only at MVP (reconciliation).',
+      validation: (Rule: RuleLike) => Rule.integer().min(0),
+    },
+    {
+      name: 'shipping_destination',
+      title: 'Shipping destination (geo)',
+      type: 'object',
+      group: 'rail',
+      description: 'Customer delivery point for Itafika. Populated once checkout collects a geocoded address.',
+      fields: [
+        { name: 'lat', type: 'number', title: 'Latitude' },
+        { name: 'lng', type: 'number', title: 'Longitude' },
+        { name: 'label', type: 'string', title: 'Label' },
+      ],
     },
     {
       name: 'items',

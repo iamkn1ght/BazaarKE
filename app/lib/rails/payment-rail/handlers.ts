@@ -2,6 +2,7 @@ import "server-only";
 import { getWriteClient } from "@/app/lib/sanity-write";
 import { dedupKey, seenBefore } from "../_shared/dedup";
 import { notifyAccount, notifyIdempotencyKey, type TodokuTemplateKey } from "../todoku";
+import { dispatchDelivery } from "../itafika";
 import { formatKes, parseAmountMinor } from "./money";
 import type { KpEvent } from "./types";
 
@@ -92,7 +93,13 @@ export async function dispatchKpEvent(event: KpEvent): Promise<void> {
       const vars = { order_ref: event.external_ref ?? "", amount: amountText(event) };
       await notify(event, "order_confirmed_sms", "order_confirmed_sms", vars);
       await notify(event, "order_confirmed_whatsapp", "order_confirmed_whatsapp", vars);
-      // TODO(Week 4): trigger Itafika POST /v1/jobs (anchor_reference_id = the order's external_ref)
+      // Trigger last-mile delivery. Inert until shipping geo + store origin exist; partial-failure
+      // safe — a dispatch error must not roll back the PAID state.
+      try {
+        await dispatchDelivery(event.external_ref ?? "");
+      } catch (err) {
+        console.error("[kp->itafika] dispatch failed:", err instanceof Error ? err.message : err);
+      }
       break;
     }
     case "PAYMENT_FAILED":

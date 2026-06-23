@@ -19,7 +19,7 @@ export interface RailEnvelope<T> {
 
 export class RailError extends Error {
   constructor(
-    public readonly rail: RailPrefix,
+    public readonly rail: string, // RailPrefix for the shared rails; "Itafika" uses its own forked signer
     public readonly status: number,
     public readonly code: string,
     message: string,
