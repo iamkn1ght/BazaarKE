@@ -6,7 +6,7 @@ import { client, urlFor } from "@/app/lib/sanity";
 import { fullProduct } from "@/app/interface";
 import ImageGallery from "@/app/components/imageGallery";
 import AddToBag from "@/app/components/AddToBag";
-import { formatKes, kesMinorToMajor } from "@/app/lib/rails/payment-rail/money";
+import { formatKes, kesMinorToMajor, resolvePriceMinor } from "@/app/lib/rails/payment-rail/money";
 
 async function getData(slug: string) {
     const query = `*[_type == "product" && slug.current == $slug][0] {
@@ -44,7 +44,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
     const data = await getData(slug);
     if (!data) notFound();
 
-    const priceMinor = data.price_minor ?? Math.round(data.price * 100);
+    const priceMinor = resolvePriceMinor(data);
     const siteUrl = process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:3000";
     const productImage = data.images?.[0] ? urlFor(data.images[0]).url() : undefined;
     const jsonLd = {
@@ -54,13 +54,15 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
         description: data.description,
         image: productImage,
         category: data.categoryName,
-        offers: {
-            "@type": "Offer",
-            price: kesMinorToMajor(priceMinor),
-            priceCurrency: "KES",
-            availability: "https://schema.org/InStock",
-            url: `${siteUrl}/product/${data.slug}`,
-        },
+        ...(priceMinor != null && {
+            offers: {
+                "@type": "Offer",
+                price: kesMinorToMajor(priceMinor),
+                priceCurrency: "KES",
+                availability: "https://schema.org/InStock",
+                url: `${siteUrl}/product/${data.slug}`,
+            },
+        }),
     };
     return (
         <div className="bg-white">
@@ -88,14 +90,18 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
                             <span className="text-sm text-gray-500 transition duration-100">43 Ratings</span>
                         </div>
                         <div className="mb-4">
-                            <div className="flex items-end gap-2">
-                                <span className="text-xl font-bold text-gray-800 md:text-2xl">
-                                    {formatKes(priceMinor)}
-                                </span>
-                                <span className="mb-0.5 text-red-500 line-through">
-                                    {formatKes(priceMinor + 3000)}
-                                </span>
-                            </div>
+                            {priceMinor != null ? (
+                                <div className="flex items-end gap-2">
+                                    <span className="text-xl font-bold text-gray-800 md:text-2xl">
+                                        {formatKes(priceMinor)}
+                                    </span>
+                                    <span className="mb-0.5 text-red-500 line-through">
+                                        {formatKes(priceMinor + 3000)}
+                                    </span>
+                                </div>
+                            ) : (
+                                <span className="text-xl font-bold text-gray-800 md:text-2xl">Price on request</span>
+                            )}
                             <span className="text-sm text-gray-500">
                                 Incl. VAT plus Shipping
                             </span>
@@ -105,16 +111,19 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
                             <span className="text-sm">2-4 Day Shipping</span>
                         </div>
                         <div className="flex gap-2.5">
-                            <AddToBag
-                                key={data._id}
-                                id={data._id}
-                                currency="KES"
-                                description={data.description}
-                                image={data.images[0]}
-                                name={data.name}
-                                priceMinor={priceMinor}
-                            />
-                            
+                            {priceMinor != null ? (
+                                <AddToBag
+                                    key={data._id}
+                                    id={data._id}
+                                    currency="KES"
+                                    description={data.description}
+                                    image={data.images[0]}
+                                    name={data.name}
+                                    priceMinor={priceMinor}
+                                />
+                            ) : (
+                                <Button disabled>Currently unavailable</Button>
+                            )}
                         </div>
                         <p className="mt-12 text-base text-gray-500 tracking-wide">
                             {data.description}

@@ -1,111 +1,106 @@
-# Project Recap — Unique Accessories
+# Unique Accessories — Rail Integration RECAP (v1.0)
 
-A Next.js 15 e-commerce storefront for "Unique Accessories", backed by **Sanity** (CMS + data store) and **PayPal** (payments). This recap summarizes the full state of the codebase as of the read-through.
+**App:** Unique Accessories (Next.js 15 App Router + Sanity)
+**Status:** Phase 1 CODE-COMPLETE across all 4 critical rails; operator-gated for go-live
+**Branch:** `feat/rail-integration-phase-1` (baseline tag `pre-rail-integration`)
+**Latest commit:** Week 5 (hardening + Phase 2 design)
+**Data store:** Sanity (project `d0fzn4cs`, dataset `sanityyy`) — no separate DB
+**Dedup/cache:** Vercel KV (to provision)
+**Domain:** TBD
+**Authored:** 24 June 2026
 
-## Stack
+> Mirrors the Klokd v3 RECAP structure. Master cross-rail tracker: `…\Platform Rails-instruction pack v1-reboot pack v1.2\RECAP.md`. (Supersedes the pre-rail PayPal app overview — see baseline commit `62c9eb8`.)
 
-- **Next.js 15.1.0** (App Router) + **React 18** + **TypeScript**
-- **Sanity** (`next-sanity`) — product catalog, hero images, and order storage (no separate database)
-- **PayPal Orders API v2** — server-side create + capture, plus a signature-verified webhook
-- **use-shopping-cart** — client-side cart state (persisted, `client-only` mode)
-- **Tailwind CSS 3** + **shadcn/ui** (Radix primitives, `lucide-react` icons)
+---
 
-## Directory layout
+## 1. Headline
 
-```
-app/
-  layout.tsx              Root layout: fonts, SEO metadata, Providers, Navbar, cart modal
-  page.tsx                Home page (Newest + Hero)
-  interface.ts            Shared types: simplifiedProduct, fullProduct
-  error.tsx               Global error boundary
-  not-found.tsx           404 page
-  robots.ts / sitemap.ts  SEO route handlers
-  globals.css
+PayPal is gone; the storefront is fully rail-aligned — **KES-denominated, M-Pesa-paid (Kipkiren Pay), Identiti-authed, Todoku-communicated, Itafika-delivered**. All four Phase-1 rails are wired, type-checked, lint-clean, 34 unit tests green, and the production build passes. A multi-agent **adversarial-verify** pass (23 agents, 7 dimensions) found 16 issues, confirmed 15 (2 critical, 6 major, 6 minor, 1 nit) — **all 15 fixed** this sprint. The integration is **engineering-complete and operator-gated**: nothing goes live end-to-end until Silvia delivers credentials and KP deploys. Every rail path degrades gracefully (503 / inert-log) when creds are absent — no crashes, no PayPal residue.
 
-  all/page.tsx            "All products" listing
-  [category]/page.tsx     Per-category product listing (dynamic)
-  product/[slug]/page.tsx Product detail page (+ JSON-LD, OG metadata)
-  success/page.tsx        Post-checkout confirmation
-  cancel/page.tsx         Checkout-cancelled page
+## 2. Commit log
 
-  components/
-    Navbar.tsx            Top nav + cart button
-    Hero.tsx              Hero section w/ Sanity hero images + category links
-    Newest.tsx            4 most recent products on the home page
-    AddToBag.tsx          "Add To Cart" button (client)
-    CheckoutNow.tsx       PayPal buttons (create/capture flow, client)
-    ShoppingCartModal.tsx Slide-out cart (shadcn Sheet)
-    Providers.tsx         PayPalScriptProvider + CartProvider wrapper
-    imageGallery.tsx      Product image gallery w/ thumbnail switching
+| Commit | Date | What |
+|---|---|---|
+| `62c9eb8` | (Apr 2026) | Baseline: PayPal-complete storefront (tag `pre-rail-integration`) |
+| `638c550` | 23 Jun | Rail integration playbook + startup prompt |
+| `09be307` | 23 Jun | Week 1 — PayPal removal + Identiti foundation + KES schema |
+| `e9251c8` | 24 Jun | Week 2 — Kipkiren Pay + KES checkout |
+| `6f6224a` | 24 Jun | Week 3 — Todoku comms |
+| `dfa22f8` | 24 Jun | Week 4 — Itafika last-mile |
+| _(this)_ | 24 Jun | Week 5 — §A.11 hardening, 15 adversarial-verify fixes, Phase 2 design, RECAP |
 
-  lib/
-    sanity.ts             Read client + urlFor() image builder
-    sanity-write.ts       Server-only write client (needs SANITY_API_TOKEN)
-    paypal.ts             Server-only: auth, createOrder, captureOrder, verifyWebhookSignature
+## 3. Sprint state
 
-  api/paypal/
-    create-order/route.ts  POST → validates cart, creates PayPal order
-    capture-order/route.ts POST → captures payment, persists order to Sanity
-    webhook/route.ts       POST → verifies signature, patches order status
+| Week | Title | Status | Notes |
+|---|---|---|---|
+| 1 | PayPal removal + Identiti | 🟢 DONE | 3 routes/lib/dep/4 env vars removed; shared HMAC signer; Identiti client; anonymous-express auth; additive schema |
+| 2 | Kipkiren Pay | 🟢 DONE | money.ts; client (charges/payouts/holds); Kafka consumer + inert HTTP webhook; checkout; KES end-to-end |
+| 3 | Todoku | 🟢 DONE | client; 8 templates; notifyAccount; wired to KP events; partial-failure safe |
+| 4 | Itafika | 🟢 DONE | asymmetric signer (base64/hex + bodyless-GET); client; main-loop webhook; reconciliation observe-only |
+| 5 | Hardening + Phase 2 design | 🟢 DONE | §A.11 audit; adversarial-verify (15 fixes); Hakken/Helpan operator requests; RECAP; deployment readiness |
 
-sanity/
-  sanity.config.ts        Studio config
-  schemaTypes/            product, category, heroimages (heroImage), order
-```
+## 4. Deployment + test state
 
-## Data model (Sanity)
+| Item | Value |
+|---|---|
+| `npm run lint` | ✅ clean |
+| `npx tsc --noEmit` | ✅ clean |
+| `npm run test` | ✅ 34/34 (`node:test` via tsx) |
+| `npm run build` | ✅ 17 routes |
+| Rail health | Identiti/Todoku/Itafika `200`; KP DNS unresolved (not deployed) |
+| Local run | ✅ browser-verified — KES storefront + M-Pesa checkout UI |
+| Production deploy | ❌ not done — operator-gated (see §7 + `docs/DEPLOYMENT_READINESS.md`) |
 
-- **product** — name, images[], description, slug, price, category (reference)
-- **category** — name
-- **heroImage** — image1, image2 (two homepage hero images)
-- **order** — read-only; written after capture. Holds PayPal order id, status, currency, total, items[], payer email/name, shipping address, capturedAt, and the raw capture JSON (for audit). `_id` is `order.${paypalOrderId}` for idempotency.
+## 5. Cross-rail joint status
 
-Sanity project defaults (from `app/lib/sanity.ts`): projectId `d0fzn4cs`, dataset `sanityyy`, API version `2022-03-25`, `useCdn: true` for reads.
+| Rail | Producer-side (Silvia/operator) | UA-side |
+|---|---|---|
+| **Identiti** | `unique_accessories_sandbox` secret pending (4th in stale-secret queue); HTTP webhooks at ID-14 | ✅ client, auth, inert webhook, `aud=hakken` design ask filed |
+| **Kipkiren Pay** | KP-1-Ops deploy + secret + tier_3 account + Kafka creds pending; no HTTP signer | ✅ client, money.ts, Kafka consumer + inert HTTP webhook, checkout |
+| **Todoku** | tenant + 8 ULIDs + secret + UAKE sender (2-4wk CA-K) pending | ✅ client, templates, notify wired to KP + Itafika events |
+| **Itafika** | anchor + secret + callback URL pending; OPS-4 + KP acct for KP-16 | ✅ asymmetric signer, client, main-loop webhook, dispatch (inert w/o geo) |
+| **Hakken** (P2) | `unique_accessories_v1` plugin + secret pending | 🟠 design ask filed (`OPERATOR_REQUEST_HAKKEN.md`) |
+| **Helpan** (P2) | `helpan-unique-accessories-v1` agent + 3 secrets pending | 🟠 design ask filed (`OPERATOR_REQUEST_HELPAN.md`) |
 
-## Checkout flow
+## 6. Adversarial-verify outcome (Week 5)
 
-1. Customer adds items to cart (`use-shopping-cart`, persisted client-side).
-2. `<PayPalButtons>` → `POST /api/paypal/create-order` builds an Orders API v2 order from the cart (server validates each item: name/quantity/price types and ranges).
-3. Customer approves in the PayPal popup.
-4. `<PayPalButtons>` → `POST /api/paypal/capture-order` captures payment and writes the order to Sanity via `createOrReplace` (idempotent). Persist failures are logged but don't fail the response.
-5. Client clears the cart and redirects to `/success`.
-6. Async events (refunds, disputes, denials) hit `POST /api/paypal/webhook`, are verified against `PAYPAL_WEBHOOK_ID`, and patch the order's `status`.
+23 agents · 7 dimensions · 16 findings · 15 confirmed · **15 fixed**:
 
-Webhook event → status mapping: `PAYMENT.CAPTURE.COMPLETED` → COMPLETED, `PAYMENT.CAPTURE.REFUNDED` → REFUNDED, `PAYMENT.CAPTURE.DENIED` → FAILED, `CUSTOMER.DISPUTE.CREATED/UPDATED` → DISPUTED.
+- **Critical (2):** (a) dedup claim-then-crash — a transient Sanity failure after claiming the dedup key permanently dropped the event (money-state loss) → now releases the key on failure so redelivery recovers; (b) checkout not idempotent — a retried Pay click double-created orders + double STK push → now a stable client `checkout_attempt_id` drives the doc id + KP idempotency key + customer-create, with a short-circuit on an existing charge.
+- **Major (6):** unpriced-product render crash + schema root cause (guard + `price_minor` required); order state-machine clobbering (forward-only transition guards, KP + Itafika); guest `createCustomer` orphans on retry (per-attempt idempotency); KP + Itafika audit rows missing `traceparent` (now recovered from the order).
+- **Minor/nit (7):** cart line showed unit not line total; unbounded quantity (capped + safe-int); unsigned Itafika event-header merge (dropped + enum allowlist); `unknown` dedup collision (id-less → non-dedupable); charge audit missing `request_id` (threaded); short dedup TTL (→ 24h); orphan-PENDING on charge failure (patched to FAILED).
 
-## Configuration
+## 7. Outstanding blockers
 
-Environment variables (see `.env.example` / README for full table):
+**Operator (Silvia):** Identiti sandbox secret (queue); KP-1-Ops deploy + secret + tier_3 + Kafka creds + HTTP signer; Todoku tenant/ULIDs/secret/UAKE; Itafika anchor/secret/callback + OPS-4; Hakken plugin/secret; Helpan agent/secrets. **Chamia:** CHAMIA-ENTITY registration date (gates KP tier_3). **UA:** provision Vercel KV; deploy the Kafka consumer worker; run the KES re-price migration; add a geocoded shipping-address step (gates Itafika dispatch + delivery-fee quote). Full checklist: `docs/DEPLOYMENT_READINESS.md`.
 
-- `NEXT_PUBLIC_BASE_URL` — origin for checkout redirects
-- `NEXT_PUBLIC_SANITY_PROJECT_ID`, `NEXT_PUBLIC_SANITY_DATASET`, `NEXT_PUBLIC_SANITY_API_VERSION`
-- `SANITY_API_TOKEN` — write token, required to persist orders
-- `NEXT_PUBLIC_PAYPAL_CLIENT_ID`, `PAYPAL_CLIENT_SECRET`, `PAYPAL_API_BASE` (sandbox vs live), `PAYPAL_WEBHOOK_ID`
+## 8. Architecture invariants (locked)
 
-`next.config.ts` whitelists `cdn.sanity.io` for `next/image`. PayPal defaults to the **sandbox** API base.
+| ID | Invariant |
+|---|---|
+| AD-1 | No third-party payment/comms/identity SDKs — rails only (no PayPal, Daraja, AT, Twilio, WhatsApp direct) |
+| AD-2 | KES integer minor units everywhere; no float money; `*_minor` carry `Rule.integer().min(0)` |
+| AD-3 | Rail base URLs from env only; `PAYMENT_RAIL_*` never `KIPKIREN_*` (survives Phase-3 LipaStack flip) |
+| AD-4 | Money Rule: KP/Itafika webhooks + reconciliation + refund = main-loop only |
+| AD-5 | Webhooks: `runtime='nodejs'`, raw-bytes → constant-time verify → JSON.parse; KV dedup (never Sanity) |
+| AD-6 | Raw MSISDN/PII never leave Identiti; phone tokens minted fresh per send |
+| AD-7 | §A.11: every `rail_audit` row carries `traceparent` + `business_op_id` (+ `request_id` on outbound) |
+| AD-8 | State writes forward-only (guarded by current state); idempotency keys stable per business-op |
 
-## SEO
+## 9. Reference index
 
-- Root layout sets title template, OpenGraph, and Twitter card metadata.
-- Product pages emit `Product` JSON-LD and per-product OG images.
-- `robots.ts` disallows `/api/`, `/success`, `/cancel`; `sitemap.ts` enumerates static routes, categories, and all product slugs.
+- **Docs:** `docs/RAIL_INTEGRATION_PLAYBOOK.md`, `docs/KMV_RAILS_INTEGRATION_GUIDE.md` (wire), `docs/PAYPAL_REMOVAL_RUNBOOK.md` + `_RESULT.md`, `docs/{KP,TODOKU,ITAFIKA}_INTEGRATION_RESULT.md`, `docs/DEPLOYMENT_READINESS.md`
+- **Operator requests:** `OPERATOR_REQUEST_{CHAMIA,IDENTITI,KP,TODOKU,ITAFIKA,HAKKEN,HELPAN}.md`
+- **Smoke:** `npm run smoke:{identiti,payment-rail,todoku,itafika}`
+- **Rail code:** `app/lib/rails/{_shared,identiti,payment-rail,todoku,itafika}/`; webhooks `app/api/webhooks/{identiti,payment-rail,itafika}/`; checkout `app/api/checkout/{initiate,status}/`
 
-## Notable observations
+## 10. Tech debt
 
-- **Navbar categories are hardcoded** (`Electronics`, `Kitchenware`, `Furniture`, `Accessories`) and case-sensitive; they must match Sanity `category.name` values for `[category]` pages to return products.
-- **Stripe is fully removed** — `use-shopping-cart` runs in `client-only` mode with `stripe=""`; PayPal is the sole provider.
-- Order persistence is best-effort on capture; the PayPal webhook is the durable path for status changes.
-- Product detail page shows a **hardcoded** rating (4.2 / 43 ratings) and a fake "was" price (`price + 30`) with a "Sale" badge — placeholder UI, not real data.
+- Handler-level integration tests (dedup release, forward-only transitions, webhook verify) need a Sanity/KV mock harness — deferred (the logic is adversarial-verify-confirmed; signing + money + price-guard are unit-tested, 34 cases).
+- README "Checkout flow" still describes PayPal — rewrite for the KP STK-push flow before launch.
+- Cart carries `price_minor`; until `npm run migrate:sanity -- --apply` runs, products fall back to `price*100`.
+- Checkout lacks a geocoded shipping-address step → Itafika dispatch + cart delivery-fee quote are wired-but-inert.
 
-## Scripts
+---
 
-```bash
-npm run dev     # next dev
-npm run build   # next build
-npm run start   # next start
-npm run lint    # next lint
-```
-
-## Status
-
-Core storefront and the full PayPal checkout pipeline (create → capture → persist → webhook) are implemented, along with SEO, error/404/cancel/success pages, and the Sanity schema. Remaining work is largely content population, switching PayPal to live credentials, and replacing placeholder product UI (ratings/sale price) with real data.
+*Unique Accessories Rail Integration RECAP v1.0 · 24 June 2026 · Phase 1 code-complete, operator-gated · Major delta from baseline: PayPal removed, 4 rails integrated, 15 adversarial-verify fixes*

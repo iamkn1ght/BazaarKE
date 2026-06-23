@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import { randomUUID } from "crypto";
 import { client } from "@/app/lib/sanity";
 import { getWriteClient } from "@/app/lib/sanity-write";
 import { getSession, setSession } from "@/app/lib/auth/session";
@@ -12,6 +11,8 @@ import { RailError } from "@/app/lib/rails/_shared/railFetch";
 export const runtime = "nodejs";
 
 const E164 = /^\+\d{7,15}$/;
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const MAX_QTY_PER_LINE = 1000;
 
 interface CartLine {
   id: string;
@@ -25,13 +26,20 @@ interface PriceRow {
   price?: number;
 }
 
+interface ExistingOrder {
+  account_uuid?: string;
+  kp_charge_id?: string;
+  total_minor?: number;
+  traceparent?: string;
+}
+
 function parseLines(raw: unknown): CartLine[] {
   if (!Array.isArray(raw)) return [];
   const lines: CartLine[] = [];
   for (const entry of raw) {
     const id = typeof entry?.id === "string" ? entry.id : null;
     const quantity = typeof entry?.quantity === "number" ? entry.quantity : null;
-    if (!id || !quantity || !Number.isInteger(quantity) || quantity < 1) continue;
+    if (!id || !quantity || !Number.isInteger(quantity) || quantity < 1 || quantity > MAX_QTY_PER_LINE) continue;
     lines.push({ id, quantity });
   }
   return lines;
@@ -45,17 +53,42 @@ function priceMinorOf(row: PriceRow): number {
 }
 
 export async function POST(req: Request) {
-  const traceparent = newTraceparent();
   try {
     const body = await req.json().catch(() => ({}));
+
+    // A stable per-checkout-attempt id (client-minted, resent unchanged on retry) makes the order
+    // doc, the KP idempotency_key, and the customer-create idempotent across retries — so a retried
+    // Pay click returns the SAME order/charge instead of double-creating and double-charging.
+    const attemptId = typeof body?.checkout_attempt_id === "string" ? body.checkout_attempt_id : "";
+    if (!UUID.test(attemptId)) {
+      return NextResponse.json({ error: "Missing or invalid checkout_attempt_id" }, { status: 400 });
+    }
+    const externalRef = `ua_order_${attemptId}`;
+    const orderDocId = `order.${externalRef}`;
+
     const lines = parseLines(body?.items);
     if (lines.length === 0) {
       return NextResponse.json({ error: "Cart is empty or invalid" }, { status: 400 });
     }
 
-    // 1) Resolve the buyer's Identiti account_uuid (anonymous express creates one on the fly).
+    const writeClient = getWriteClient();
+    const existing = (await writeClient.getDocument(orderDocId)) as ExistingOrder | undefined;
+
+    // Idempotent short-circuit: this attempt already has a charge — return it, don't push again.
+    if (existing?.kp_charge_id) {
+      return NextResponse.json({
+        charge_id: existing.kp_charge_id,
+        external_ref: externalRef,
+        total_minor: existing.total_minor ?? 0,
+        status: "PENDING",
+      });
+    }
+
+    const traceparent = existing?.traceparent ?? newTraceparent();
+
+    // 1) Resolve the buyer's Identiti account_uuid (reuse on retry; anonymous-express creates one).
     const session = await getSession();
-    let accountUuid = session?.account_uuid ?? null;
+    let accountUuid = existing?.account_uuid ?? session?.account_uuid ?? null;
     if (!accountUuid) {
       const phone = typeof body?.phone === "string" ? body.phone.trim() : "";
       const name = typeof body?.name === "string" ? body.name.trim() : "";
@@ -66,12 +99,13 @@ export async function POST(req: Request) {
         );
       }
       const [first, ...rest] = name.split(/\s+/);
+      // Stable idempotency + app_correlation per attempt so a retry returns the SAME customer.
       const customer = await createCustomer(
         {
           phone,
           name_first: first,
           name_last: rest.join(" ") || first,
-          app_correlation: `unique_accessories_${randomUUID()}`,
+          app_correlation: `unique_accessories_${attemptId}`,
           consent: {
             dpa_consent: true,
             kyc_consent: true,
@@ -80,10 +114,10 @@ export async function POST(req: Request) {
             captured_via: "app_onboarding",
           },
         },
-        { traceparent },
+        { traceparent, idempotencyKey: `customer_${attemptId}` },
       );
       accountUuid = customer.account_uuid;
-      const token = await issueCustomerToken(accountUuid, { traceparent });
+      const token = await issueCustomerToken(accountUuid, { traceparent, idempotencyKey: `token_${attemptId}` });
       await setSession({ account_uuid: accountUuid, token: token.token }, token.expires_in);
     }
 
@@ -98,9 +132,7 @@ export async function POST(req: Request) {
     const items: Array<{ name: string; quantity: number; unit_price_minor: number }> = [];
     for (const line of lines) {
       const row = byId.get(line.id);
-      if (!row) {
-        return NextResponse.json({ error: `Unknown product: ${line.id}` }, { status: 400 });
-      }
+      if (!row) return NextResponse.json({ error: `Unknown product: ${line.id}` }, { status: 400 });
       const unit = priceMinorOf(row);
       if (unit <= 0) {
         return NextResponse.json({ error: `Product ${row.name ?? line.id} is not priced for checkout` }, { status: 409 });
@@ -108,46 +140,72 @@ export async function POST(req: Request) {
       totalMinor += unit * line.quantity;
       items.push({ name: row.name ?? line.id, quantity: line.quantity, unit_price_minor: unit });
     }
+    if (!Number.isSafeInteger(totalMinor) || totalMinor <= 0) {
+      return NextResponse.json({ error: "Order total is out of range" }, { status: 400 });
+    }
 
-    // 3) Create the order (state PENDING) keyed by external_ref, then initiate the KP charge.
-    const orderId = randomUUID();
-    const externalRef = `ua_order_${orderId}`;
-    const writeClient = getWriteClient();
+    // 3) Create the order (PENDING) keyed by the stable external_ref, then initiate the KP charge.
     await writeClient.createIfNotExists({
-      _id: `order.${externalRef}`,
+      _id: orderDocId,
       _type: "order",
       state: "PENDING",
       account_uuid: accountUuid,
       currency: "KES",
       total_minor: totalMinor,
-      business_op_id: orderId,
+      business_op_id: attemptId,
       traceparent,
       items,
     });
 
-    const charge = await initiateCharge(
-      {
-        account_uuid: accountUuid,
-        amount_minor: totalMinor,
-        currency: "KES",
-        purpose: "order_purchase",
-        external_ref: externalRef,
-        idempotency_key: orderId,
-      },
-      { traceparent, idempotencyKey: orderId },
-    );
+    let charge;
+    let requestId: string | undefined;
+    try {
+      const result = await initiateCharge(
+        {
+          account_uuid: accountUuid,
+          amount_minor: totalMinor,
+          currency: "KES",
+          purpose: "order_purchase",
+          external_ref: externalRef,
+          idempotency_key: attemptId,
+        },
+        { traceparent, idempotencyKey: attemptId },
+      );
+      charge = result.charge;
+      requestId = result.requestId;
+    } catch (chargeErr) {
+      // Don't leave an orphan PENDING order: mark it FAILED with an audit row, then surface the error.
+      await writeClient
+        .patch(orderDocId)
+        .setIfMissing({ rail_audit: [] })
+        .set({ state: "FAILED" })
+        .append("rail_audit", [
+          {
+            rail: "kipkiren_pay",
+            action: "charge.initiate",
+            traceparent,
+            business_op_id: attemptId,
+            timestamp: new Date().toISOString(),
+            success: false,
+            error_code: chargeErr instanceof RailError ? chargeErr.code : "CHARGE_FAILED",
+          },
+        ])
+        .commit({ autoGenerateArrayKeys: true })
+        .catch(() => {});
+      throw chargeErr;
+    }
 
-    // Record the charge id + audit row on the order.
     await writeClient
-      .patch(`order.${externalRef}`)
+      .patch(orderDocId)
       .setIfMissing({ rail_audit: [] })
       .set({ kp_charge_id: charge.charge_id })
       .append("rail_audit", [
         {
           rail: "kipkiren_pay",
           action: "charge.initiate",
-          business_op_id: orderId,
           traceparent,
+          business_op_id: attemptId,
+          request_id: requestId,
           timestamp: new Date().toISOString(),
           success: true,
         },
@@ -161,7 +219,6 @@ export async function POST(req: Request) {
       status: charge.status,
     });
   } catch (err) {
-    // KP not deployed yet (RAIL_CONFIG_INCOMPLETE) -> 503; other rail errors -> surface code.
     if (err instanceof Error && err.message.startsWith("RAIL_CONFIG_INCOMPLETE")) {
       return NextResponse.json({ error: "Payment is temporarily unavailable. Please try again shortly." }, { status: 503 });
     }

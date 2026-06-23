@@ -24,7 +24,6 @@ export async function handleItafikaWebhook(req: Request): Promise<Response> {
   const rawBody = await req.text(); // raw bytes BEFORE JSON.parse
   const signature = req.headers.get("x-itafika-signature");
   const timestamp = req.headers.get("x-itafika-timestamp");
-  const eventHeader = req.headers.get("x-itafika-event");
   if (!signature || !timestamp) {
     return NextResponse.json({ error: "Missing Itafika signature headers" }, { status: 400 });
   }
@@ -44,7 +43,11 @@ export async function handleItafikaWebhook(req: Request): Promise<Response> {
   } catch {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
-  if (!event.event && eventHeader) event.event = eventHeader;
+  // Route ONLY on the signed body's event field. The x-itafika-event header is NOT covered by the
+  // HMAC, so it must never drive handling; dispatchItafikaEvent additionally allowlists the value.
+  if (!event.event) {
+    return NextResponse.json({ error: "Missing event in signed body" }, { status: 400 });
+  }
 
   await dispatchItafikaEvent(event);
   return NextResponse.json({ received: true });

@@ -40,7 +40,7 @@ async function itafikaFetch<T>(
   path: string,
   body: unknown | undefined,
   ctx: CallContext = {},
-): Promise<T> {
+): Promise<{ data: T; requestId?: string }> {
   const cfg = getConfig();
   const m = method.toUpperCase();
   const rawBody = m === "GET" || body === undefined ? undefined : JSON.stringify(body);
@@ -68,25 +68,26 @@ async function itafikaFetch<T>(
     const message = env.error?.message ?? `Itafika call failed (${res.status})`;
     throw new RailError("Itafika", res.status, code, message, env.meta?.request_id);
   }
-  return env.data as T;
+  return { data: env.data as T, requestId: env.meta?.request_id };
 }
 
 /** POST /v1/jobs/quote — price only, no job created. */
 export async function quoteJob(input: QuoteInput, ctx: CallContext = {}): Promise<Quote> {
-  return itafikaFetch<Quote>("POST", "/v1/jobs/quote", input, ctx);
+  return (await itafikaFetch<Quote>("POST", "/v1/jobs/quote", input, ctx)).data;
 }
 
 /** POST /v1/jobs — create a dispatch (idempotent via x-idempotency-key AND anchor_reference_id). */
-export async function createJob(input: CreateJobInput, ctx: CallContext = {}): Promise<Job> {
-  return itafikaFetch<Job>("POST", "/v1/jobs", input, ctx);
+export async function createJob(input: CreateJobInput, ctx: CallContext = {}): Promise<{ job: Job; requestId?: string }> {
+  const { data, requestId } = await itafikaFetch<Job>("POST", "/v1/jobs", input, ctx);
+  return { job: data, requestId };
 }
 
 /** GET /v1/jobs/{job_id} — fetch job state (bodyless GET; empty Content-Type signed). */
 export async function getJob(jobId: string, ctx: CallContext = {}): Promise<Job> {
-  return itafikaFetch<Job>("GET", `/v1/jobs/${encodeURIComponent(jobId)}`, undefined, ctx);
+  return (await itafikaFetch<Job>("GET", `/v1/jobs/${encodeURIComponent(jobId)}`, undefined, ctx)).data;
 }
 
 /** POST /v1/jobs/{job_id}/cancel — cancel (POST, NOT DELETE; pre-DELIVERED only). */
 export async function cancelJob(jobId: string, ctx: CallContext = {}): Promise<Job> {
-  return itafikaFetch<Job>("POST", `/v1/jobs/${encodeURIComponent(jobId)}/cancel`, {}, ctx);
+  return (await itafikaFetch<Job>("POST", `/v1/jobs/${encodeURIComponent(jobId)}/cancel`, {}, ctx)).data;
 }

@@ -73,3 +73,12 @@ export interface ItafikaWebhookEvent {
   job_id: string;
   state: JobState | string;
 }
+
+/** The only event names accepted for dispatch — anything else is rejected (no unsigned routing). */
+export const ITAFIKA_WEBHOOK_EVENTS: ReadonlySet<string> = new Set([
+  "job.assigned",
+  "job.picked_up",
+  "job.delivered",
+  "job.failed",
+  "job.cancelled",
+]);

@@ -21,7 +21,7 @@ async function main(): Promise<void> {
   const orderId = randomUUID();
 
   console.log("1) POST /v1/charges/initiate (amount_minor=5000 == KES 50)");
-  const charge = await initiateCharge({
+  const { charge } = await initiateCharge({
     account_uuid: accountUuid,
     amount_minor: 5000,
     currency: "KES",

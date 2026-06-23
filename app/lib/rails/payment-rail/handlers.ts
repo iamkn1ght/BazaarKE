@@ -1,43 +1,72 @@
 import "server-only";
 import { getWriteClient } from "@/app/lib/sanity-write";
-import { dedupKey, seenBefore } from "../_shared/dedup";
+import { dedupKey, releaseDedup, seenBefore } from "../_shared/dedup";
 import { notifyAccount, notifyIdempotencyKey, type TodokuTemplateKey } from "../todoku";
 import { dispatchDelivery } from "../itafika";
 import { formatKes, parseAmountMinor } from "./money";
 import type { KpEvent } from "./types";
 
 /**
- * KP event handling — Money Rule: main-loop only. Shared by BOTH the inert HTTP webhook
- * (app/lib/rails/payment-rail/webhook.ts) and the primary Kafka consumer (kafka-consumer.ts),
- * so the money logic lives in exactly one place.
+ * KP event handling — Money Rule: main-loop only. Shared by BOTH the inert HTTP webhook and the
+ * primary Kafka consumer, so the money logic lives in exactly one place.
  *
  * Order docs use _id = `order.<external_ref>` (external_ref = "ua_order_<id>", set at checkout).
+ *
+ * Idempotency + ordering safety:
+ *  - dedup is claimed up-front for concurrency, but RELEASED on failure so a retry re-processes
+ *    (otherwise a claim-then-crash permanently drops the event — money-state loss);
+ *  - state writes are FORWARD-ONLY (guarded by the order's current state), so an out-of-order or
+ *    redelivered event cannot clobber a terminal state or re-fire side effects.
  */
 
-function auditRow(action: string, event: KpEvent) {
+interface OrderSnapshot {
+  state?: string;
+  traceparent?: string;
+  business_op_id?: string;
+}
+
+async function loadOrder(externalRef: string): Promise<OrderSnapshot | null> {
+  return getWriteClient().fetch<OrderSnapshot | null>(
+    `*[_type == "order" && _id == $id][0]{ state, traceparent, business_op_id }`,
+    { id: `order.${externalRef}` },
+  );
+}
+
+function auditRow(action: string, snapshot: OrderSnapshot, externalRef: string) {
   return {
     rail: "kipkiren_pay",
     action,
-    business_op_id: event.external_ref,
+    traceparent: snapshot.traceparent, // §A.11 — recovered from the order
+    business_op_id: snapshot.business_op_id ?? externalRef.replace(/^ua_order_/, ""),
     timestamp: new Date().toISOString(),
     success: true,
   };
 }
 
-async function patchOrder(
-  event: KpEvent,
+/**
+ * Apply a state write to the order, FORWARD-ONLY: if allowedFrom is given and the order's current
+ * state is not one of those predecessors, the event is ignored (idempotent / out-of-order safe).
+ * allowedFrom = null means an audit-only event (no state change, always recorded). Returns whether
+ * the state change was applied (so callers can gate side effects on a real transition).
+ */
+async function applyState(
+  externalRef: string,
+  snapshot: OrderSnapshot,
   set: Record<string, unknown>,
-  auditAction: string,
-): Promise<void> {
-  const externalRef = event.external_ref;
-  if (!externalRef) return; // nothing to correlate to
-  const client = getWriteClient();
-  await client
+  action: string,
+  allowedFrom: Set<string> | null,
+): Promise<boolean> {
+  if (allowedFrom && !allowedFrom.has(snapshot.state ?? "")) {
+    console.warn(`[kp] ignoring ${action} for ${externalRef}: state '${snapshot.state ?? "none"}' is not a legal predecessor`);
+    return false;
+  }
+  await getWriteClient()
     .patch(`order.${externalRef}`)
     .setIfMissing({ rail_audit: [] })
     .set(set)
-    .append("rail_audit", [auditRow(auditAction, event)])
+    .append("rail_audit", [auditRow(action, snapshot, externalRef)])
     .commit({ autoGenerateArrayKeys: true });
+  return allowedFrom !== null; // true = a state transition happened; false = audit-only row
 }
 
 function orderIdOf(event: KpEvent): string {
@@ -52,11 +81,7 @@ function amountText(event: KpEvent): string {
   }
 }
 
-/**
- * Send a Todoku notification for an order event. Partial-failure rule (App Integration Guide §8.6):
- * a comms failure must NOT roll back the payment state — log and continue. Inert until Todoku creds
- * + template ULIDs land (throws RAIL_CONFIG_INCOMPLETE / TEMPLATE_NOT_READY, caught here).
- */
+/** Todoku notify — partial-failure safe (a comms failure must NOT roll back the payment state). */
 async function notify(
   event: KpEvent,
   templateKey: TodokuTemplateKey,
@@ -76,50 +101,64 @@ async function notify(
   }
 }
 
-/**
- * Dispatch a KP event. Idempotent: dedups via Vercel KV before any side effect, so HTTP-retry
- * and Kafka-redelivery of the same event are safe.
- */
 export async function dispatchKpEvent(event: KpEvent): Promise<void> {
-  const dedupId =
-    event.external_ref ?? event.charge_id ?? event.payout_id ?? event.resource_id ?? "unknown";
-  if (await seenBefore(dedupKey("kp", String(event.event_type), dedupId))) {
-    return; // duplicate — already processed
+  // Only dedup on a STABLE id. An id-less event must not collapse into a shared "unknown" slot.
+  const stableId = event.external_ref ?? event.charge_id ?? event.payout_id ?? event.resource_id ?? null;
+  let key: string | null = null;
+  if (stableId) {
+    key = dedupKey("kp", String(event.event_type), stableId);
+    if (await seenBefore(key)) return; // duplicate — already processed
   }
 
-  switch (event.event_type) {
-    case "PAYMENT_COMPLETED": {
-      await patchOrder(event, { state: "PAID", kp_charge_id: event.charge_id }, "payment.completed");
-      const vars = { order_ref: event.external_ref ?? "", amount: amountText(event) };
-      await notify(event, "order_confirmed_sms", "order_confirmed_sms", vars);
-      await notify(event, "order_confirmed_whatsapp", "order_confirmed_whatsapp", vars);
-      // Trigger last-mile delivery. Inert until shipping geo + store origin exist; partial-failure
-      // safe — a dispatch error must not roll back the PAID state.
-      try {
-        await dispatchDelivery(event.external_ref ?? "");
-      } catch (err) {
-        console.error("[kp->itafika] dispatch failed:", err instanceof Error ? err.message : err);
+  try {
+    const externalRef = event.external_ref ?? null;
+    const snapshot: OrderSnapshot = (externalRef && (await loadOrder(externalRef))) || {};
+
+    switch (event.event_type) {
+      case "PAYMENT_COMPLETED": {
+        if (!externalRef) break;
+        const applied = await applyState(
+          externalRef,
+          snapshot,
+          { state: "PAID", kp_charge_id: event.charge_id },
+          "payment.completed",
+          new Set(["", "PENDING"]),
+        );
+        if (applied) {
+          const vars = { order_ref: externalRef, amount: amountText(event) };
+          await notify(event, "order_confirmed_sms", "order_confirmed_sms", vars);
+          await notify(event, "order_confirmed_whatsapp", "order_confirmed_whatsapp", vars);
+          try {
+            await dispatchDelivery(externalRef, snapshot.traceparent);
+          } catch (err) {
+            console.error("[kp->itafika] dispatch failed:", err instanceof Error ? err.message : err);
+          }
+        }
+        break;
       }
-      break;
+      case "PAYMENT_FAILED":
+        if (externalRef) await applyState(externalRef, snapshot, { state: "FAILED" }, "payment.failed", new Set(["", "PENDING"]));
+        break;
+      case "PAYOUT_COMPLETED":
+        if (externalRef) {
+          const applied = await applyState(externalRef, snapshot, { state: "REFUNDED" }, "payout.completed", new Set(["PAID", "DISPATCHED", "DELIVERED"]));
+          if (applied) {
+            await notify(event, "refund_initiated_sms", "refund_initiated", { order_ref: externalRef, amount: amountText(event) });
+          }
+        }
+        break;
+      case "PAYOUT_FAILED":
+        if (externalRef) await applyState(externalRef, snapshot, {}, "payout.failed", null);
+        break;
+      case "WALLET_CREDITED":
+        if (externalRef) await applyState(externalRef, snapshot, {}, "wallet.credited", null);
+        break;
+      default:
+        break; // unknown/unsubscribed — ack without side effects
     }
-    case "PAYMENT_FAILED":
-      await patchOrder(event, { state: "FAILED" }, "payment.failed");
-      break;
-    case "PAYOUT_COMPLETED":
-      await patchOrder(event, { state: "REFUNDED" }, "payout.completed");
-      await notify(event, "refund_initiated_sms", "refund_initiated", {
-        order_ref: event.external_ref ?? "",
-        amount: amountText(event),
-      });
-      break;
-    case "PAYOUT_FAILED":
-      await patchOrder(event, {}, "payout.failed");
-      break;
-    case "WALLET_CREDITED":
-      await patchOrder(event, {}, "wallet.credited");
-      break;
-    default:
-      // Unknown/unsubscribed event — ack without side effects.
-      break;
+  } catch (err) {
+    // Money-state write failed AFTER claiming dedup — release so the redelivery re-processes.
+    if (key) await releaseDedup(key);
+    throw err;
   }
 }

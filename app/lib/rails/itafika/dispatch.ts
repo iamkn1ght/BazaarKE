@@ -58,7 +58,7 @@ export async function dispatchDelivery(externalRef: string, traceparent?: string
 
   const distance_meters = haversineMeters(origin, destination);
   const quote = await quoteJob({ origin, destination, distance_meters, tier: "standard" }, { traceparent });
-  const job = await createJob(
+  const { job, requestId } = await createJob(
     { anchor_reference_id: externalRef, origin, destination, distance_meters, tier: "standard" },
     { traceparent, idempotencyKey: externalRef },
   );
@@ -68,7 +68,15 @@ export async function dispatchDelivery(externalRef: string, traceparent?: string
     .setIfMissing({ rail_audit: [] })
     .set({ itafika_job_id: job.job_id, delivery_fee_minor: quote.price_minor })
     .append("rail_audit", [
-      { rail: "itafika", action: "job.create", business_op_id: externalRef, traceparent, timestamp: new Date().toISOString(), success: true },
+      {
+        rail: "itafika",
+        action: "job.create",
+        traceparent,
+        business_op_id: externalRef.replace(/^ua_order_/, ""),
+        request_id: requestId,
+        timestamp: new Date().toISOString(),
+        success: true,
+      },
     ])
     .commit({ autoGenerateArrayKeys: true });
 }

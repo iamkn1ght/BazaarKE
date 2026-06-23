@@ -6,7 +6,9 @@ import {
   kesMajorToMinor,
   kesMinorToMajor,
   parseAmountMinor,
+  priceLabel,
   requiresStepUp,
+  resolvePriceMinor,
 } from "./money";
 
 describe("kesMajorToMinor", () => {
@@ -56,5 +58,23 @@ describe("requiresStepUp", () => {
     assert.equal(STEPUP_THRESHOLD_MINOR, 1_000_000);
     assert.equal(requiresStepUp(STEPUP_THRESHOLD_MINOR), true);
     assert.equal(requiresStepUp(STEPUP_THRESHOLD_MINOR - 1), false);
+  });
+});
+
+describe("resolvePriceMinor / priceLabel (unpriced-product guard)", () => {
+  it("prefers price_minor, falls back to legacy price*100", () => {
+    assert.equal(resolvePriceMinor({ price_minor: 5000, price: 99 }), 5000);
+    assert.equal(resolvePriceMinor({ price: 50 }), 5000);
+  });
+  it("returns null (never throws) when neither field is usable", () => {
+    assert.equal(resolvePriceMinor({}), null);
+    assert.equal(resolvePriceMinor({ price_minor: undefined, price: undefined }), null);
+    assert.equal(resolvePriceMinor({ price: -5 }), null);
+    assert.equal(resolvePriceMinor({ price_minor: 12.5 }), null); // non-integer minor rejected
+  });
+  it("priceLabel never throws and degrades to 'Price on request'", () => {
+    assert.equal(priceLabel({ price_minor: 5000 }), "KES 50.00");
+    assert.equal(priceLabel({}), "Price on request");
+    assert.equal(priceLabel({ price: undefined }), "Price on request");
   });
 });

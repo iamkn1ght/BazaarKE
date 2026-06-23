@@ -21,7 +21,7 @@ async function main(): Promise<void> {
 
   const anchorRef = `ua_order_smoke_${randomUUID()}`;
   console.log("2) POST /v1/jobs (create)");
-  const job = await createJob({ anchor_reference_id: anchorRef, origin, destination, distance_meters, tier: "standard" }, { idempotencyKey: anchorRef });
+  const { job } = await createJob({ anchor_reference_id: anchorRef, origin, destination, distance_meters, tier: "standard" }, { idempotencyKey: anchorRef });
   console.log(`   job_id=${job.job_id} state=${job.state}`);
   if (job.state !== "PENDING_ASSIGNMENT") throw new Error(`unexpected initial state: ${job.state}`);
 

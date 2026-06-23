@@ -22,6 +22,10 @@ export default function KipkirenPayCheckout() {
   const [seconds, setSeconds] = useState(COUNTDOWN_SECONDS);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const tickRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  // Stable per-attempt id: kept across an immediate retry (e.g. a slow/timed-out STK push, so the
+  // server short-circuits to the same charge instead of pushing twice) and only regenerated after a
+  // definitive decline (a genuinely new charge is then wanted).
+  const attemptIdRef = useRef<string | null>(null);
 
   function stopTimers() {
     if (pollRef.current) clearInterval(pollRef.current);
@@ -46,12 +50,13 @@ export default function KipkirenPayCheckout() {
   async function start() {
     setError(null);
     setPhase("initiating");
+    if (!attemptIdRef.current) attemptIdRef.current = crypto.randomUUID();
     const items = Object.values(cartDetails ?? {}).map((e) => ({ id: e.id, quantity: e.quantity }));
     try {
       const res = await fetch("/api/checkout/initiate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ items, phone, name }),
+        body: JSON.stringify({ items, phone, name, checkout_attempt_id: attemptIdRef.current }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
@@ -82,6 +87,7 @@ export default function KipkirenPayCheckout() {
           router.push("/success");
         } else if (status === "FAILED") {
           stopTimers();
+          attemptIdRef.current = null; // declined — a retry should start a fresh charge
           setError("Payment failed or was declined. Please try again.");
           setPhase("failed");
         }

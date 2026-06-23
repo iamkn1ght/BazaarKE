@@ -37,8 +37,9 @@ export default {
             name: 'price_minor',
             title: 'Price (KES minor units)',
             type: 'number',
-            description: 'Catalog price in KES integer minor units (KES 50 = 5000). Set by the KES re-price migration (CHAMIA-CURRENCY: no FX).',
-            validation: (Rule: { integer: () => { min: (n: number) => unknown } }) => Rule.integer().min(0),
+            description: 'Canonical catalog price in KES integer minor units (KES 50 = 5000). Set by the KES re-price migration (CHAMIA-CURRENCY: no FX). Legacy `price` is non-authoritative.',
+            validation: (Rule: { required: () => { integer: () => { min: (n: number) => unknown } } }) =>
+                Rule.required().integer().min(0),
         },
         {
             name: 'category',

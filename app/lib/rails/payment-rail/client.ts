@@ -42,15 +42,18 @@ export interface CallContext {
 }
 
 /** POST /v1/charges/initiate — initiate a cart payment (triggers the M-Pesa STK push). */
-export async function initiateCharge(input: InitiateChargeInput, ctx: CallContext = {}): Promise<Charge> {
-  const { data } = await railFetch<Charge>(getConfig(), {
+export async function initiateCharge(
+  input: InitiateChargeInput,
+  ctx: CallContext = {},
+): Promise<{ charge: Charge; requestId?: string }> {
+  const { data, requestId } = await railFetch<Charge>(getConfig(), {
     method: "POST",
     path: "/v1/charges/initiate",
     body: input,
     idempotencyKey: ctx.idempotencyKey ?? input.idempotency_key,
     traceparent: ctx.traceparent,
   });
-  return data;
+  return { charge: data, requestId };
 }
 
 /** GET /v1/charges/{charge_id} — poll charge status. */

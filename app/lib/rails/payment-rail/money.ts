@@ -48,3 +48,20 @@ export function requiresStepUp(amountMinor: number): boolean {
   assertInteger(amountMinor);
   return amountMinor >= STEPUP_THRESHOLD_MINOR;
 }
+
+/**
+ * Resolve a product's display price in KES minor units, or null if it has no usable price.
+ * Never throws — for render paths, where a half-entered catalog item must not crash the page.
+ * Prefers the canonical price_minor; falls back to legacy major-unit price.
+ */
+export function resolvePriceMinor(p: { price_minor?: number | null; price?: number | null }): number | null {
+  if (typeof p.price_minor === "number" && Number.isInteger(p.price_minor) && p.price_minor >= 0) return p.price_minor;
+  if (typeof p.price === "number" && Number.isFinite(p.price) && p.price >= 0) return Math.round(p.price * 100);
+  return null;
+}
+
+/** Formatted price label for a product, or "Price on request" when it has no usable price. */
+export function priceLabel(p: { price_minor?: number | null; price?: number | null }): string {
+  const minor = resolvePriceMinor(p);
+  return minor != null ? formatKes(minor) : "Price on request";
+}

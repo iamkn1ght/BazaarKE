@@ -9,7 +9,9 @@ import "server-only";
  * is atomic. Key shape: dedup:<rail>:<event_type>:<idempotency_key>; TTL = 300s replay + margin.
  */
 
-const TTL_SECONDS = 600;
+// 24h — sized to a realistic rail retry/redelivery horizon, NOT the 300s replay window. A short
+// TTL would let a delayed Kafka/HTTP redelivery slip past dedup and re-run side effects.
+const TTL_SECONDS = 86_400;
 
 export function dedupKey(rail: string, eventType: string, idempotencyKey: string): string {
   return `dedup:${rail}:${eventType}:${idempotencyKey}`;
@@ -43,4 +45,18 @@ export async function seenBefore(key: string, ttlSeconds: number = TTL_SECONDS):
   if (memory.has(key)) return true;
   memory.set(key, now + ttlSeconds * 1000);
   return false;
+}
+
+/**
+ * Release a previously-claimed dedup key so a retry can re-process. Call this when processing
+ * FAILS after seenBefore() claimed the key — otherwise the claim-then-crash leaves the event
+ * permanently marked "seen" and the redelivery is silently dropped (money-state loss).
+ */
+export async function releaseDedup(key: string): Promise<void> {
+  if (kvConfigured()) {
+    const { kv } = await import("@vercel/kv");
+    await kv.del(key);
+    return;
+  }
+  memory.delete(key);
 }
