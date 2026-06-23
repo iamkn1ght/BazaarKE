@@ -3,14 +3,20 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useShoppingCart } from "use-shopping-cart";
+import { Check, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { formatKes } from "@/app/lib/rails/payment-rail/money";
 
-type Phase = "idle" | "initiating" | "awaiting" | "failed";
+type Phase = "idle" | "initiating" | "awaiting" | "success" | "failed";
 
 const COUNTDOWN_SECONDS = 90;
 const POLL_MS = 3000;
+const REDIRECT_MS = 1100;
+
+// Countdown ring geometry.
+const RING_R = 42;
+const RING_C = 2 * Math.PI * RING_R;
 
 export default function KipkirenPayCheckout() {
   const router = useRouter();
@@ -22,30 +28,40 @@ export default function KipkirenPayCheckout() {
   const [seconds, setSeconds] = useState(COUNTDOWN_SECONDS);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const tickRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const redirectRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Stable per-attempt id: kept across an immediate retry (e.g. a slow/timed-out STK push, so the
   // server short-circuits to the same charge instead of pushing twice) and only regenerated after a
   // definitive decline (a genuinely new charge is then wanted).
   const attemptIdRef = useRef<string | null>(null);
 
-  function stopTimers() {
+  function stopPolling() {
     if (pollRef.current) clearInterval(pollRef.current);
     if (tickRef.current) clearInterval(tickRef.current);
     pollRef.current = null;
     tickRef.current = null;
   }
 
-  useEffect(() => () => stopTimers(), []);
+  useEffect(() => {
+    return () => {
+      stopPolling();
+      if (redirectRef.current) clearTimeout(redirectRef.current);
+    };
+  }, []);
 
   useEffect(() => {
     if (phase === "awaiting" && seconds === 0) {
-      stopTimers();
+      stopPolling();
       setError("We didn't get a confirmation in time. If you paid, your order will update shortly — otherwise try again.");
       setPhase("failed");
     }
   }, [phase, seconds]);
 
   const total = Math.round(totalPrice ?? 0);
-  const disabled = (cartCount ?? 0) === 0;
+  const phoneClean = phone.replace(/[\s-]/g, "");
+  const phoneValid = /^\+?\d{9,15}$/.test(phoneClean);
+  const nameValid = name.trim().length >= 2;
+  const showPhoneHint = phone.length > 0 && !phoneValid;
+  const canPay = (cartCount ?? 0) > 0 && phase !== "initiating" && phoneValid && nameValid;
 
   async function start() {
     setError(null);
@@ -81,12 +97,15 @@ export default function KipkirenPayCheckout() {
         const data = await res.json().catch(() => ({}));
         const status = String(data.status ?? "").toUpperCase();
         if (status === "COMPLETED" || status === "PAID") {
-          stopTimers();
+          stopPolling();
           clearCart();
-          handleCartClick();
-          router.push("/success");
+          setPhase("success");
+          redirectRef.current = setTimeout(() => {
+            handleCartClick();
+            router.push("/success");
+          }, REDIRECT_MS);
         } else if (status === "FAILED") {
-          stopTimers();
+          stopPolling();
           attemptIdRef.current = null; // declined — a retry should start a fresh charge
           setError("Payment failed or was declined. Please try again.");
           setPhase("failed");
@@ -97,38 +116,103 @@ export default function KipkirenPayCheckout() {
     }, POLL_MS);
   }
 
+  // --- Awaiting: STK-push prompt with a depleting countdown ring ---
   if (phase === "awaiting") {
+    const remaining = seconds / COUNTDOWN_SECONDS;
     return (
-      <div className="text-center">
-        <p className="text-sm font-medium text-gray-900">Check your phone for the M-Pesa prompt</p>
-        <p className="mt-1 text-sm text-gray-500">Enter your M-Pesa PIN to pay {formatKes(total)}.</p>
-        <p className="mt-3 text-2xl font-semibold text-primary tabular-nums">{seconds}s</p>
-        <p className="mt-1 text-xs text-gray-400">Waiting for confirmation…</p>
+      <div className="flex flex-col items-center text-center motion-safe:animate-in motion-safe:fade-in motion-safe:zoom-in-95 motion-safe:duration-300 motion-safe:ease-out">
+        <div className="relative h-24 w-24">
+          <svg viewBox="0 0 96 96" className="h-24 w-24 -rotate-90">
+            <circle cx="48" cy="48" r={RING_R} fill="none" stroke="hsl(var(--muted))" strokeWidth="6" />
+            <circle
+              cx="48"
+              cy="48"
+              r={RING_R}
+              fill="none"
+              stroke="hsl(var(--primary))"
+              strokeWidth="6"
+              strokeLinecap="round"
+              strokeDasharray={RING_C}
+              strokeDashoffset={RING_C * (1 - remaining)}
+              style={{ transition: "stroke-dashoffset 1000ms linear" }}
+            />
+          </svg>
+          <div className="absolute inset-0 flex flex-col items-center justify-center" aria-hidden>
+            <span className="text-2xl font-semibold tabular-nums text-gray-900">{seconds}</span>
+            <span className="text-[10px] font-medium uppercase tracking-wide text-gray-400">sec</span>
+          </div>
+        </div>
+        <p className="mt-4 text-sm font-semibold text-gray-900" role="status" aria-live="polite">
+          Check your phone for the M-Pesa prompt
+        </p>
+        <p className="mt-1 text-sm text-gray-500">Enter your PIN to pay {formatKes(total)}</p>
+        <div className="mt-3 flex items-center gap-1.5 text-xs text-gray-400">
+          <span className="h-1.5 w-1.5 rounded-full bg-primary motion-safe:animate-pulse" />
+          Waiting for confirmation…
+        </div>
       </div>
     );
   }
 
+  // --- Success: brief confirmation before redirecting ---
+  if (phase === "success") {
+    return (
+      <div className="flex flex-col items-center text-center motion-safe:animate-in motion-safe:fade-in motion-safe:zoom-in-95 motion-safe:duration-300">
+        <div className="flex h-14 w-14 items-center justify-center rounded-full bg-primary/10 text-primary motion-safe:animate-in motion-safe:zoom-in-50 motion-safe:duration-300 motion-safe:ease-out">
+          <Check className="h-7 w-7" />
+        </div>
+        <p className="mt-3 text-sm font-semibold text-gray-900" role="status" aria-live="polite">
+          Payment confirmed
+        </p>
+        <p className="mt-1 text-sm text-gray-500">Taking you to your order…</p>
+      </div>
+    );
+  }
+
+  // --- Form: idle / initiating / failed ---
   return (
     <div className="space-y-3 text-left">
       {error && (
-        <p className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>
+        <p
+          role="alert"
+          className="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-top-1 motion-safe:duration-200"
+        >
+          {error}
+        </p>
       )}
-      <Input
-        value={phone}
-        onChange={(e) => setPhone(e.target.value)}
-        placeholder="M-Pesa phone, e.g. +254700000000"
-        inputMode="tel"
-        aria-label="M-Pesa phone"
-      />
+      <div className="space-y-1">
+        <Input
+          value={phone}
+          onChange={(e) => setPhone(e.target.value)}
+          type="tel"
+          inputMode="tel"
+          autoComplete="tel"
+          placeholder="M-Pesa phone, e.g. +254700000000"
+          aria-label="M-Pesa phone"
+          aria-invalid={showPhoneHint || undefined}
+        />
+        {showPhoneHint && (
+          <p className="px-1 text-xs text-destructive motion-safe:animate-in motion-safe:fade-in motion-safe:duration-150">
+            Enter a valid phone, e.g. +254700000000
+          </p>
+        )}
+      </div>
       <Input
         value={name}
         onChange={(e) => setName(e.target.value)}
-        placeholder="Full name"
         autoComplete="name"
+        placeholder="Full name"
         aria-label="Full name"
       />
-      <Button onClick={start} disabled={disabled || phase === "initiating"} className="w-full">
-        {phase === "initiating" ? "Starting…" : `Pay ${formatKes(total)} with M-Pesa`}
+      <Button onClick={start} disabled={!canPay} className="w-full">
+        {phase === "initiating" ? (
+          <>
+            <Loader2 className="h-4 w-4 animate-spin motion-safe:[animation-duration:0.7s]" />
+            Starting…
+          </>
+        ) : (
+          `Pay ${formatKes(total)} with M-Pesa`
+        )}
       </Button>
       <p className="text-center text-xs text-gray-400">
         You&apos;ll get an STK push on your phone. Returning customers are recognized automatically.
