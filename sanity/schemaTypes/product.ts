@@ -29,8 +29,16 @@ export default {
         },
         {
             name: 'price',
-            title: 'Price',
-            type: 'number'
+            title: 'Price (legacy, unmarked units)',
+            type: 'number',
+            description: 'Legacy PayPal-era price. Superseded by price_minor (KES integer minor units). Retained for reference during migration.',
+        },
+        {
+            name: 'price_minor',
+            title: 'Price (KES minor units)',
+            type: 'number',
+            description: 'Catalog price in KES integer minor units (KES 50 = 5000). Set by the KES re-price migration (CHAMIA-CURRENCY: no FX).',
+            validation: (Rule: { integer: () => { min: (n: number) => unknown } }) => Rule.integer().min(0),
         },
         {
             name: 'category',

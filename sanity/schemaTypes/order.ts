@@ -1,90 +1,188 @@
+// Order document — rail-aligned (Kipkiren Pay) with PayPal-era fields retained as legacy.
+//
+// Additive migration per RAIL_INTEGRATION_PLAYBOOK.md §4.3:
+//  - New rail fields: account_uuid, state, total_minor, kp_charge_id, itafika_job_id,
+//    traceparent, business_op_id, rail_audit[], legacy.
+//  - KES money is INTEGER MINOR UNITS only — every *_minor field carries Rule.integer().min(0).
+//  - Legacy text-shaped fields (shippingAddress, rawCapture) + the PayPal fields are KEPT so
+//    existing tagged orders stay readable. New orders are written by the KP capture flow (Week 2).
+
+type RuleLike = {
+  integer: () => RuleLike;
+  min: (n: number) => RuleLike;
+  required: () => RuleLike;
+};
+
 export default {
-    name: 'order',
-    type: 'document',
-    title: 'Order',
-    readOnly: true,
-    fields: [
-        {
-            name: 'paypalOrderId',
-            title: 'PayPal Order ID',
-            type: 'string',
-        },
-        {
-            name: 'status',
-            title: 'Status',
-            type: 'string',
-            options: {
-                list: [
-                    { title: 'Pending', value: 'PENDING' },
-                    { title: 'Completed', value: 'COMPLETED' },
-                    { title: 'Refunded', value: 'REFUNDED' },
-                    { title: 'Disputed', value: 'DISPUTED' },
-                    { title: 'Failed', value: 'FAILED' },
-                ],
-            },
-        },
-        {
-            name: 'currency',
-            title: 'Currency',
-            type: 'string',
-        },
-        {
-            name: 'total',
-            title: 'Total',
-            type: 'number',
-        },
-        {
-            name: 'items',
-            title: 'Items',
-            type: 'array',
-            of: [
-                {
-                    type: 'object',
-                    fields: [
-                        { name: 'name', type: 'string', title: 'Name' },
-                        { name: 'quantity', type: 'number', title: 'Quantity' },
-                        { name: 'unitPrice', type: 'number', title: 'Unit price' },
-                    ],
-                },
-            ],
-        },
-        {
-            name: 'payerEmail',
-            title: 'Payer email',
-            type: 'string',
-        },
-        {
-            name: 'payerName',
-            title: 'Payer name',
-            type: 'string',
-        },
-        {
-            name: 'shippingAddress',
-            title: 'Shipping address',
-            type: 'text',
-        },
-        {
-            name: 'capturedAt',
-            title: 'Captured at',
-            type: 'datetime',
-        },
-        {
-            name: 'rawCapture',
-            title: 'Raw PayPal capture response',
-            type: 'text',
-            description: 'Full JSON from PayPal capture-order call (kept for audit).',
-        },
-    ],
-    preview: {
-        select: {
-            title: 'paypalOrderId',
-            subtitle: 'status',
-        },
-        prepare({ title, subtitle }: { title?: string; subtitle?: string }) {
-            return {
-                title: title ?? 'Unknown order',
-                subtitle: subtitle ?? '',
-            };
-        },
+  name: 'order',
+  type: 'document',
+  title: 'Order',
+  readOnly: true,
+  groups: [
+    { name: 'rail', title: 'Rail (current)' },
+    { name: 'legacy', title: 'Legacy (PayPal)' },
+    { name: 'audit', title: 'Audit' },
+  ],
+  fields: [
+    // --- Rail (current) ---
+    {
+      name: 'account_uuid',
+      title: 'Identiti account UUID',
+      type: 'string',
+      group: 'rail',
+      description: 'Identiti customer FK (acc_<uuid>). Primary FK for every order. tier-0 for anonymous express.',
     },
+    {
+      name: 'state',
+      title: 'State',
+      type: 'string',
+      group: 'rail',
+      options: {
+        list: [
+          { title: 'Pending payment', value: 'PENDING' },
+          { title: 'Paid', value: 'PAID' },
+          { title: 'Dispatched', value: 'DISPATCHED' },
+          { title: 'Delivered', value: 'DELIVERED' },
+          { title: 'Refunded', value: 'REFUNDED' },
+          { title: 'Failed', value: 'FAILED' },
+          { title: 'Cancelled', value: 'CANCELLED' },
+        ],
+      },
+    },
+    {
+      name: 'total_minor',
+      title: 'Total (KES minor units)',
+      type: 'number',
+      group: 'rail',
+      description: 'Order total in KES integer minor units (KES 50 = 5000). Wire field on KP is amount_minor.',
+      validation: (Rule: RuleLike) => Rule.integer().min(0),
+    },
+    {
+      name: 'currency',
+      title: 'Currency',
+      type: 'string',
+      group: 'rail',
+      initialValue: 'KES',
+    },
+    {
+      name: 'kp_charge_id',
+      title: 'Kipkiren Pay charge ID',
+      type: 'string',
+      group: 'rail',
+      description: 'charge_id from POST /v1/charges/initiate (KP). Idempotency anchor for the order.',
+    },
+    {
+      name: 'itafika_job_id',
+      title: 'Itafika job ID',
+      type: 'string',
+      group: 'rail',
+      description: 'job_id from POST /v1/jobs (Itafika). Set on dispatch (Week 4).',
+    },
+    {
+      name: 'items',
+      title: 'Items',
+      type: 'array',
+      group: 'rail',
+      of: [
+        {
+          type: 'object',
+          fields: [
+            { name: 'name', type: 'string', title: 'Name' },
+            { name: 'quantity', type: 'number', title: 'Quantity', validation: (Rule: RuleLike) => Rule.integer().min(0) },
+            {
+              name: 'unit_price_minor',
+              type: 'number',
+              title: 'Unit price (KES minor units)',
+              validation: (Rule: RuleLike) => Rule.integer().min(0),
+            },
+          ],
+        },
+      ],
+    },
+
+    // --- Audit (§A.11) ---
+    {
+      name: 'traceparent',
+      title: 'Traceparent',
+      type: 'string',
+      group: 'audit',
+      description: 'W3C traceparent for the business operation; propagated across all rail calls.',
+    },
+    {
+      name: 'business_op_id',
+      title: 'Business operation ID',
+      type: 'string',
+      group: 'audit',
+      description: 'Single business-operation UUID (order_id) idempotency keys derive from.',
+    },
+    {
+      name: 'rail_audit',
+      title: 'Rail audit trail',
+      type: 'array',
+      group: 'audit',
+      description: 'One row per rail call (§A.11): rail, action, request_id, traceparent, business_op_id, timestamp.',
+      of: [
+        {
+          type: 'object',
+          fields: [
+            { name: 'rail', type: 'string', title: 'Rail' },
+            { name: 'action', type: 'string', title: 'Action' },
+            { name: 'request_id', type: 'string', title: 'Rail request_id (meta.request_id)' },
+            { name: 'traceparent', type: 'string', title: 'Traceparent' },
+            { name: 'business_op_id', type: 'string', title: 'Business op ID' },
+            { name: 'timestamp', type: 'datetime', title: 'Timestamp' },
+            { name: 'success', type: 'boolean', title: 'Success' },
+            { name: 'error_code', type: 'string', title: 'Error code' },
+          ],
+        },
+      ],
+    },
+
+    // --- Legacy (PayPal) — retained for tagged historical orders; never written by new flows ---
+    {
+      name: 'legacy',
+      title: 'Legacy tag',
+      type: 'string',
+      group: 'legacy',
+      description: "Set to 'paypal' for PayPal-era test orders (CHAMIA-DATASET-CLEANUP: tag, do not drop).",
+    },
+    { name: 'paypalOrderId', title: 'PayPal Order ID (legacy)', type: 'string', group: 'legacy' },
+    { name: 'status', title: 'Status (legacy PayPal)', type: 'string', group: 'legacy' },
+    { name: 'total', title: 'Total (legacy, major units)', type: 'number', group: 'legacy' },
+    { name: 'payerEmail', title: 'Payer email (legacy)', type: 'string', group: 'legacy' },
+    { name: 'payerName', title: 'Payer name (legacy)', type: 'string', group: 'legacy' },
+    { name: 'shippingAddress', title: 'Shipping address (legacy text)', type: 'text', group: 'legacy' },
+    { name: 'capturedAt', title: 'Captured at (legacy)', type: 'datetime', group: 'legacy' },
+    {
+      name: 'rawCapture',
+      title: 'Raw PayPal capture response (legacy)',
+      type: 'text',
+      group: 'legacy',
+      description: 'Full JSON from the legacy PayPal capture-order call (kept for audit).',
+    },
+  ],
+  preview: {
+    select: {
+      title: 'kp_charge_id',
+      legacyTitle: 'paypalOrderId',
+      subtitle: 'state',
+      legacySubtitle: 'status',
+    },
+    prepare({
+      title,
+      legacyTitle,
+      subtitle,
+      legacySubtitle,
+    }: {
+      title?: string;
+      legacyTitle?: string;
+      subtitle?: string;
+      legacySubtitle?: string;
+    }) {
+      return {
+        title: title ?? legacyTitle ?? 'Unknown order',
+        subtitle: subtitle ?? legacySubtitle ?? '',
+      };
+    },
+  },
 };
