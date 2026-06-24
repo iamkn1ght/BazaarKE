@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Truck } from "lucide-react";
@@ -6,6 +7,7 @@ import { client, urlFor } from "@/app/lib/sanity";
 import { fullProduct } from "@/app/interface";
 import ImageGallery from "@/app/components/imageGallery";
 import AddToBag from "@/app/components/AddToBag";
+import RelatedProducts from "@/app/components/RelatedProducts";
 import { formatKes, kesMinorToMajor, resolvePriceMinor } from "@/app/lib/rails/payment-rail/money";
 
 async function getData(slug: string) {
@@ -71,9 +73,18 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
                 dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
             />
             <div className="mx-auto max-w-screen-xl px-4 md:px-8">
-                <div className="grid gap-8 md:grid-cols-2">
+                <nav aria-label="Breadcrumb" className="py-6 text-sm text-muted-foreground">
+                    <ol className="flex flex-wrap items-center gap-1.5">
+                        <li><Link href="/" className="transition-colors hover:text-foreground">Home</Link></li>
+                        <li aria-hidden className="text-muted-foreground/50">/</li>
+                        <li><Link href={`/${data.categoryName}`} className="transition-colors hover:text-foreground">{data.categoryName}</Link></li>
+                        <li aria-hidden className="text-muted-foreground/50">/</li>
+                        <li className="text-foreground" aria-current="page">{data.name}</li>
+                    </ol>
+                </nav>
+                <div className="grid gap-8 md:grid-cols-2 lg:items-start">
                     <ImageGallery images={data.images} />
-                    <div className="md:py-8">
+                    <div className="md:py-8 lg:sticky lg:top-24 lg:self-start">
                         <div className="mb-4 md:mb-6">
                             <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
                                 {data.categoryName}
@@ -122,6 +133,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
                     </div>
                 </div>
             </div>
+            <RelatedProducts category={data.categoryName} excludeId={data._id} />
         </div>
     )
 }

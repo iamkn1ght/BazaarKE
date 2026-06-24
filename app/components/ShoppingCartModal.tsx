@@ -3,71 +3,94 @@
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { useShoppingCart } from "use-shopping-cart";
 import Image from "next/image";
+import { ShoppingBag } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import KipkirenPayCheckout from "./KipkirenPayCheckout";
 import { formatKes } from "@/app/lib/rails/payment-rail/money";
 
 export default function ShoppingCartModal() {
-    const { cartCount, shouldDisplayCart, handleCartClick, cartDetails, removeItem, totalPrice } = useShoppingCart();
+  const { cartCount, shouldDisplayCart, handleCartClick, cartDetails, removeItem, totalPrice } = useShoppingCart();
+  const empty = (cartCount ?? 0) === 0;
 
-    return (
-        <Sheet open={shouldDisplayCart} onOpenChange={() => handleCartClick()}>
-            <SheetContent className="sm:max-w-lg w-[90vw]">
-                <SheetHeader>
-                    <SheetTitle>Shopping Cart</SheetTitle>
-                </SheetHeader>
-                <div className="h-full flex flex-col justify-between">
-                    <div className="mt-8 flex-1 overflow-y-auto">
-                        <ul className="-my-6 divide-y divide-border">
-                            {cartCount === 0 ? (
-                                <h1 className="py-6">No Items in Cart</h1>
-                            ) : (
-                                Object.values(cartDetails ?? {}).map((entry) => (
-                                    <li key={entry.id} className="flex py-6">
-                                        <div className="h-24 w-24 flex-shrink-0 overflow-hidden rounded-md border border-border">
-                                            <Image src={entry.image as string} alt="Product Image" width={100} height={100} />
-                                        </div>
-                                        <div className="ml-4 flex flex-1 flex-col">
-                                            <div>
-                                                <div className="flex justify-between text-base font-medium text-foreground">
-                                                    <h3>{entry.name}</h3>
-                                                    <p className="ml-4">{formatKes(entry.value)}</p>
-                                                </div>
-                                                <p className="mt-1 text-sm text-muted-foreground line-clamp-2">{entry.description}</p>
-                                            </div>
-                                            <div className="flex flex-1 items-end justify-between text-sm">
-                                                <p className="text-muted-foreground">QTY: {entry.quantity}</p>
-                                                <div className="flex">
-                                                    <button type="button" onClick={() => removeItem(entry.id)} className="font-medium text-primary hover:text-primary/80">
-                                                        Remove
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </li>
-                                ))
-                            )}
-                        </ul>
+  return (
+    <Sheet open={shouldDisplayCart} onOpenChange={() => handleCartClick()}>
+      <SheetContent className="flex w-[90vw] flex-col sm:max-w-lg">
+        <SheetHeader>
+          <SheetTitle>
+            Your bag {!empty && <span className="font-normal text-muted-foreground">({cartCount})</span>}
+          </SheetTitle>
+        </SheetHeader>
+
+        {empty ? (
+          <div className="flex flex-1 flex-col items-center justify-center text-center">
+            <div className="flex h-14 w-14 items-center justify-center rounded-full bg-muted text-muted-foreground">
+              <ShoppingBag className="h-6 w-6" />
+            </div>
+            <p className="mt-4 text-base font-medium text-foreground">Your bag is empty</p>
+            <p className="mt-1 text-sm text-muted-foreground">Add something you love to get started.</p>
+            <Button className="mt-6" onClick={() => handleCartClick()}>
+              Continue shopping
+            </Button>
+          </div>
+        ) : (
+          <div className="flex h-full flex-col justify-between overflow-hidden">
+            <ul className="-my-6 flex-1 divide-y divide-border overflow-y-auto">
+              {Object.values(cartDetails ?? {}).map((entry) => (
+                <li key={entry.id} className="flex py-6">
+                  <div className="h-24 w-24 flex-shrink-0 overflow-hidden rounded-md border border-border bg-muted">
+                    <Image
+                      src={entry.image as string}
+                      alt={entry.name}
+                      width={100}
+                      height={100}
+                      className="h-full w-full object-cover"
+                    />
+                  </div>
+                  <div className="ml-4 flex flex-1 flex-col">
+                    <div>
+                      <div className="flex justify-between text-base font-medium text-foreground">
+                        <h3 className="pr-2">{entry.name}</h3>
+                        <p className="ml-4 shrink-0">{formatKes(entry.value)}</p>
+                      </div>
+                      <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">{entry.description}</p>
                     </div>
-                    <div className="border-t border-border px-4 py-6 sm:px-6">
-                        <div className="flex justify-between text-base font-medium text-foreground">
-                            <p>Subtotal:</p>
-                            <p>{formatKes(Math.round(totalPrice ?? 0))}</p>
-                        </div>
-                        <p className="mt-0.5 text-sm text-muted-foreground">Shipping and taxes are calculated at checkout.</p>
-                        <div className="mt-6">
-                            <KipkirenPayCheckout />
-                        </div>
-                        <div className="mt-6 flex justify-center text-center text-sm text-muted-foreground">
-                            <p>
-                                OR{" "}
-                                <button className="font-medium text-primary hover:text-primary/80" onClick={() => handleCartClick()}>
-                                    Continue Shopping
-                                </button>
-                            </p>
-                        </div>
+                    <div className="flex flex-1 items-end justify-between text-sm">
+                      <p className="text-muted-foreground">Qty {entry.quantity}</p>
+                      <button
+                        type="button"
+                        onClick={() => removeItem(entry.id)}
+                        className="font-medium text-primary transition-colors hover:text-primary/80"
+                      >
+                        Remove
+                      </button>
                     </div>
-                </div>
-            </SheetContent>
-        </Sheet>
-    );
+                  </div>
+                </li>
+              ))}
+            </ul>
+            <div className="border-t border-border pt-6">
+              <div className="flex justify-between text-base font-medium text-foreground">
+                <p>Subtotal</p>
+                <p>{formatKes(Math.round(totalPrice ?? 0))}</p>
+              </div>
+              <p className="mt-0.5 text-sm text-muted-foreground">Shipping and taxes calculated at checkout.</p>
+              <div className="mt-6">
+                <KipkirenPayCheckout />
+              </div>
+              <div className="mt-4 text-center text-sm text-muted-foreground">
+                or{" "}
+                <button
+                  type="button"
+                  className="font-medium text-primary transition-colors hover:text-primary/80"
+                  onClick={() => handleCartClick()}
+                >
+                  continue shopping
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </SheetContent>
+    </Sheet>
+  );
 }
