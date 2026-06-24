@@ -51,7 +51,7 @@ export default function KipkirenPayCheckout() {
   useEffect(() => {
     if (phase === "awaiting" && seconds === 0) {
       stopPolling();
-      setError("We didn't get a confirmation in time. If you paid, your order will update shortly — otherwise try again.");
+      setError("We didn't get a confirmation in time. If you paid, your order will update shortly - otherwise try again.");
       setPhase("failed");
     }
   }, [phase, seconds]);
@@ -106,12 +106,12 @@ export default function KipkirenPayCheckout() {
           }, REDIRECT_MS);
         } else if (status === "FAILED") {
           stopPolling();
-          attemptIdRef.current = null; // declined — a retry should start a fresh charge
+          attemptIdRef.current = null; // declined - a retry should start a fresh charge
           setError("Payment failed or was declined. Please try again.");
           setPhase("failed");
         }
       } catch {
-        /* transient — keep polling until the countdown ends */
+        /* transient - keep polling until the countdown ends */
       }
     }, POLL_MS);
   }
@@ -138,17 +138,17 @@ export default function KipkirenPayCheckout() {
             />
           </svg>
           <div className="absolute inset-0 flex flex-col items-center justify-center" aria-hidden>
-            <span className="text-2xl font-semibold tabular-nums text-gray-900">{seconds}</span>
-            <span className="text-[10px] font-medium uppercase tracking-wide text-gray-400">sec</span>
+            <span className="text-2xl font-semibold tabular-nums text-foreground">{seconds}</span>
+            <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">sec</span>
           </div>
         </div>
-        <p className="mt-4 text-sm font-semibold text-gray-900" role="status" aria-live="polite">
+        <p className="mt-4 text-sm font-semibold text-foreground" role="status" aria-live="polite">
           Check your phone for the M-Pesa prompt
         </p>
-        <p className="mt-1 text-sm text-gray-500">Enter your PIN to pay {formatKes(total)}</p>
-        <div className="mt-3 flex items-center gap-1.5 text-xs text-gray-400">
+        <p className="mt-1 text-sm text-muted-foreground">Enter your PIN to pay {formatKes(total)}</p>
+        <div className="mt-3 flex items-center gap-1.5 text-xs text-muted-foreground">
           <span className="h-1.5 w-1.5 rounded-full bg-primary motion-safe:animate-pulse" />
-          Waiting for confirmation…
+          Waiting for confirmation
         </div>
       </div>
     );
@@ -161,10 +161,10 @@ export default function KipkirenPayCheckout() {
         <div className="flex h-14 w-14 items-center justify-center rounded-full bg-primary/10 text-primary motion-safe:animate-in motion-safe:zoom-in-50 motion-safe:duration-300 motion-safe:ease-out">
           <Check className="h-7 w-7" />
         </div>
-        <p className="mt-3 text-sm font-semibold text-gray-900" role="status" aria-live="polite">
+        <p className="mt-3 text-sm font-semibold text-foreground" role="status" aria-live="polite">
           Payment confirmed
         </p>
-        <p className="mt-1 text-sm text-gray-500">Taking you to your order…</p>
+        <p className="mt-1 text-sm text-muted-foreground">Taking you to your order</p>
       </div>
     );
   }
@@ -208,13 +208,13 @@ export default function KipkirenPayCheckout() {
         {phase === "initiating" ? (
           <>
             <Loader2 className="h-4 w-4 animate-spin motion-safe:[animation-duration:0.7s]" />
-            Starting…
+            Starting
           </>
         ) : (
           `Pay ${formatKes(total)} with M-Pesa`
         )}
       </Button>
-      <p className="text-center text-xs text-gray-400">
+      <p className="text-center text-xs text-muted-foreground">
         You&apos;ll get an STK push on your phone. Returning customers are recognized automatically.
       </p>
     </div>

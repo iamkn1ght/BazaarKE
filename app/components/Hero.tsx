@@ -25,10 +25,10 @@ export default async function Hero() {
       <div className="grid items-center gap-10 pt-10 pb-12 lg:grid-cols-12 lg:gap-12 lg:pt-16">
         {/* Copy */}
         <div className="lg:col-span-5">
-          <h1 className="text-4xl font-bold leading-[1.05] tracking-tight text-neutral-900 sm:text-5xl lg:text-6xl">
+          <h1 className="text-4xl font-bold leading-[1.05] tracking-tight text-foreground sm:text-5xl lg:text-6xl">
             Your everyday store.
           </h1>
-          <p className="mt-5 max-w-md text-base leading-relaxed text-neutral-600 md:text-lg">
+          <p className="mt-5 max-w-md text-base leading-relaxed text-muted-foreground md:text-lg">
             Hand-picked electronics, kitchenware, furniture and accessories, delivered across Kenya.
           </p>
           <div className="mt-8 flex items-center gap-6">
@@ -37,7 +37,7 @@ export default async function Hero() {
             </Button>
             <Link
               href="/all"
-              className="group inline-flex items-center gap-1.5 text-sm font-medium text-neutral-900"
+              className="group inline-flex items-center gap-1.5 text-sm font-medium text-foreground"
             >
               New arrivals
               <ArrowRight className="h-4 w-4 transition-transform duration-200 ease-out group-hover:translate-x-0.5" />
@@ -48,7 +48,7 @@ export default async function Hero() {
         {/* Images */}
         <div className="lg:col-span-7">
           <div className="grid grid-cols-2 gap-4 sm:gap-6">
-            <div className="relative aspect-[3/4] overflow-hidden rounded-2xl bg-neutral-100">
+            <div className="relative aspect-[3/4] overflow-hidden rounded-2xl bg-muted">
               {image1 && (
                 <Image
                   src={urlFor(image1).width(800).height(1000).url()}
@@ -60,7 +60,7 @@ export default async function Hero() {
                 />
               )}
             </div>
-            <div className="relative mt-8 aspect-[3/4] overflow-hidden rounded-2xl bg-neutral-100 sm:mt-12">
+            <div className="relative mt-8 aspect-[3/4] overflow-hidden rounded-2xl bg-muted sm:mt-12">
               {image2 && (
                 <Image
                   src={urlFor(image2).width(800).height(1000).url()}
@@ -76,14 +76,14 @@ export default async function Hero() {
       </div>
 
       {/* Category strip */}
-      <div className="border-t border-neutral-200 py-6">
+      <div className="border-t border-border py-6">
         <div className="flex flex-wrap items-center gap-x-8 gap-y-3">
-          <span className="text-xs font-semibold uppercase tracking-wider text-neutral-400">Shop by category</span>
+          <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Shop by category</span>
           {categories.map((c) => (
             <Link
               key={c.name}
               href={c.href}
-              className="text-sm font-medium text-neutral-700 transition-colors hover:text-primary"
+              className="text-sm font-medium text-foreground transition-colors hover:text-primary"
             >
               {c.name}
             </Link>

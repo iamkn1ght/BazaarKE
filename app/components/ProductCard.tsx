@@ -5,7 +5,8 @@ import type { simplifiedProduct } from "../interface";
 
 /**
  * Image-forward, minimal-chrome product card (New Balance / Adidas editorial style):
- * large image, hover-zoom, sparse text below. Shared by Newest / All / Category.
+ * large image, hover-zoom, sparse text. Shared by Newest / Explorer. Scroll-reveals via the
+ * .reveal-up CSS utility (view-timeline; no-op when reduced motion or unsupported).
  */
 export default function ProductCard({
   product,
@@ -15,8 +16,8 @@ export default function ProductCard({
   priority?: boolean;
 }) {
   return (
-    <Link href={`/product/${product.slug}`} className="group block">
-      <div className="relative aspect-[4/5] w-full overflow-hidden rounded-lg bg-neutral-100">
+    <Link href={`/product/${product.slug}`} className="group block reveal-up">
+      <div className="relative aspect-[4/5] w-full overflow-hidden rounded-lg bg-muted">
         <Image
           src={product.imageUrl}
           alt={product.name}
@@ -28,10 +29,10 @@ export default function ProductCard({
       </div>
       <div className="mt-4 flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <h3 className="truncate text-sm font-medium text-neutral-900">{product.name}</h3>
-          <p className="mt-0.5 text-[11px] uppercase tracking-wide text-neutral-500">{product.categoryName}</p>
+          <h3 className="truncate text-sm font-medium text-foreground">{product.name}</h3>
+          <p className="mt-0.5 text-[11px] uppercase tracking-wide text-muted-foreground">{product.categoryName}</p>
         </div>
-        <p className="shrink-0 text-sm font-semibold text-neutral-900">{priceLabel(product)}</p>
+        <p className="shrink-0 text-sm font-semibold text-foreground">{priceLabel(product)}</p>
       </div>
     </Link>
   );

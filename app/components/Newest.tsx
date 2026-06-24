@@ -23,10 +23,10 @@ export default async function Newest() {
   return (
     <section className="container-x py-16 lg:py-24">
       <div className="flex items-end justify-between">
-        <h2 className="text-2xl font-bold tracking-tight text-neutral-900 sm:text-3xl">New arrivals</h2>
+        <h2 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">New arrivals</h2>
         <Link
           href="/all"
-          className="group inline-flex items-center gap-1.5 text-sm font-medium text-neutral-700 transition-colors hover:text-neutral-900"
+          className="group inline-flex items-center gap-1.5 text-sm font-medium text-foreground transition-colors hover:text-foreground"
         >
           View all
           <ArrowRight className="h-4 w-4 transition-transform duration-200 ease-out group-hover:translate-x-0.5" />
@@ -34,7 +34,7 @@ export default async function Newest() {
       </div>
 
       {data.length === 0 ? (
-        <p className="mt-10 text-sm text-neutral-500">No products yet. Check back soon.</p>
+        <p className="mt-10 text-sm text-muted-foreground">No products yet. Check back soon.</p>
       ) : (
         <div className="mt-8 grid grid-cols-2 gap-x-4 gap-y-10 md:grid-cols-3 lg:grid-cols-4">
           {data.map((product, i) => (

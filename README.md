@@ -1,71 +1,89 @@
 # Unique Accessories
 
-Next.js 15 e-commerce storefront backed by Sanity CMS and PayPal.
+A Next.js 15 e-commerce storefront for Kenya, integrated with the **KMV platform rails**: M-Pesa payments via **Kipkiren Pay**, accounts/KYC via **Identiti**, SMS/WhatsApp via **Todoku**, and last-mile delivery via **Itafika**. KES-denominated, editorial design, Sanity-backed.
 
 ## Stack
 
-- **Next.js 15** (App Router) + TypeScript
-- **Sanity** — product catalog + order storage (no separate database)
-- **PayPal Orders API v2** — server-side create + capture, signed webhook
-- **use-shopping-cart** — client cart state
-- **Tailwind CSS** + shadcn/ui
+- **Next.js 15** (App Router) + TypeScript + React 18
+- **Sanity** — product catalog + order store (no separate database)
+- **Tailwind CSS 3** + shadcn/ui, **Geist** type, light/dark theme (`next-themes`)
+- **use-shopping-cart** — client cart (KES minor units)
+- **KMV rails** (HMAC-signed clients under `app/lib/rails/`): Identiti, Kipkiren Pay, Todoku, Itafika
+
+> **Cardinal Rule:** this app never calls third-party payment/comms/identity providers directly (no PayPal, Daraja, Africa's Talking, Twilio, WhatsApp direct). Everything goes through a KMV rail. Money is **integer KES minor units** only (KES 50 = 5000).
 
 ## Setup
 
 ```bash
 npm install
-cp .env.example .env
-# fill in the values described below
-npm run dev
+cp .env.example .env   # fill in the values below
+npm run dev            # http://localhost:3000
 ```
 
 ### Environment variables
 
-| Variable | Where to get it | Required |
-|---|---|---|
-| `NEXT_PUBLIC_BASE_URL` | Your deployed origin (e.g. `https://shop.example.com`). Use `http://localhost:3000` locally. | yes |
-| `NEXT_PUBLIC_SANITY_PROJECT_ID` | [sanity.io/manage](https://www.sanity.io/manage) → your project | yes |
-| `NEXT_PUBLIC_SANITY_DATASET` | usually `production` | yes |
-| `NEXT_PUBLIC_SANITY_API_VERSION` | e.g. `2022-03-25` | yes |
-| `SANITY_API_TOKEN` | Sanity → API → Tokens (Editor role). Required to persist orders. | yes |
-| `NEXT_PUBLIC_PAYPAL_CLIENT_ID` | [developer.paypal.com](https://developer.paypal.com/dashboard/applications) | yes |
-| `PAYPAL_CLIENT_SECRET` | same dashboard | yes |
-| `PAYPAL_API_BASE` | `https://api-m.sandbox.paypal.com` or `https://api-m.paypal.com` | yes |
-| `PAYPAL_WEBHOOK_ID` | PayPal app → Webhooks tab. Point it at `{NEXT_PUBLIC_BASE_URL}/api/paypal/webhook`. | for webhook verification |
+Rail credentials are provisioned by the platform operator (see `OPERATOR_REQUEST_*.md`). Per-rail **secret encoding** matters: Identiti + Itafika are **hex-64**, Kipkiren Pay + Todoku are **base64url-43**.
+
+| Variable | Notes |
+|---|---|
+| `NEXT_PUBLIC_BASE_URL` | Deployed origin (e.g. `https://shop.example.com`); `http://localhost:3000` locally |
+| `NEXT_PUBLIC_SANITY_PROJECT_ID` / `_DATASET` / `_API_VERSION` | Sanity project; canonical dataset is `sanityyy` |
+| `SANITY_API_TOKEN` | Editor token; required to persist orders |
+| `IDENTITI_API_BASE` / `_APP_ID` / `_APP_SECRET` | Identiti (hex-64 secret) |
+| `PAYMENT_RAIL_API_BASE` / `_APP_ID` / `_APP_SECRET` / `_AUDIENCE` | Kipkiren Pay (base64url-43). `PAYMENT_RAIL_*`, never `KIPKIREN_*` (AD-K06) |
+| `TODOKU_API_BASE` / `_APP_ID` / `_APP_SECRET` / `_WEBHOOK_SECRET` + `TODOKU_TPL_*` | Todoku (base64url-43) + 8 template ULIDs |
+| `ITAFIKA_BASE_URL` / `_APP_ID` / `_APP_SECRET` | Itafika (hex-64; same secret signs both directions) |
+| `KV_REST_API_URL` / `KV_REST_API_TOKEN` | Vercel KV for webhook dedup (required in production) |
 
 ## Scripts
 
 ```bash
-npm run dev     # next dev
-npm run build   # next build
-npm run start   # next start
-npm run lint    # next lint
+npm run dev               # next dev
+npm run build             # next build
+npm run lint              # next lint
+npm run test              # node:test unit suite (signer, money, templates, Itafika)
+npm run smoke:identiti    # per-rail smoke tests (require live creds)
+npm run smoke:payment-rail
+npm run smoke:todoku
+npm run smoke:itafika
+npm run migrate:sanity    # re-price catalog to KES minor units + tag legacy orders (--apply to write)
 ```
 
 ## Content model (Sanity)
 
-- **product** — name, slug, images, price, description, category (reference)
+- **product** — name, slug, images, `price_minor` (KES minor units, required), description, category. Legacy `price` retained as non-authoritative.
 - **category** — name
-- **heroimages** — two hero images for the homepage
-- **order** — read-only; created by `/api/paypal/capture-order` after capture. Contains PayPal order id, items, total, payer info, shipping address, status, and raw capture JSON.
+- **heroImage** — two homepage hero images
+- **order** — read-only; rail-aligned (`account_uuid`, `state`, `total_minor`, `kp_charge_id`, `itafika_job_id`, `delivery_fee_minor`, `shipping_destination`, `traceparent`, `business_op_id`, `rail_audit[]`) with PayPal-era fields kept in a legacy group.
 
-## Checkout flow
+## Checkout flow (Kipkiren Pay)
 
-1. Customer adds items to the cart (`use-shopping-cart`).
-2. `<PayPalButtons>` calls `POST /api/paypal/create-order` → creates an Orders API v2 order with cart items.
-3. Customer approves in the PayPal popup.
-4. `<PayPalButtons>` calls `POST /api/paypal/capture-order` → captures the payment and writes the order to Sanity (`_id` = `order.${paypalOrderId}` for idempotency).
-5. Client clears cart + redirects to `/success`.
-6. Async PayPal events (refunds, disputes) hit `POST /api/paypal/webhook`, are verified against `PAYPAL_WEBHOOK_ID`, and patch the order's status.
+1. Customer adds items (cart in KES minor units).
+2. `POST /api/checkout/initiate` resolves the buyer's Identiti `account_uuid` (anonymous-express creates a tier-0 account on the fly), recomputes the total **server-authoritatively** from Sanity, creates the order, and calls KP `charges/initiate` (idempotent on a stable `checkout_attempt_id`).
+3. KP sends an **M-Pesa STK push**; the cart UI shows a countdown ring and polls `GET /api/checkout/status`.
+4. The KP **Kafka consumer** (or the inert HTTP webhook) marks the order `PAID` (forward-only state guard, KV dedup), triggers Todoku order-confirmation and Itafika dispatch, and the customer is redirected to `/success`.
 
-Orders are viewable in Sanity Studio.
+## Project structure
 
-## Deploy
+```
+app/lib/rails/
+  _shared/    signRequest (base64 sig / hex body-hash / v1-prefix), railFetch, dedup (KV), trace
+  identiti/   customers, customer-token, phone-tokens, stepup, tier; inert webhook
+  payment-rail/  money.ts, client, handlers, kafka-consumer, inert HTTP webhook
+  todoku/     client, 8 templates, notifyAccount
+  itafika/    asymmetric signer (base64 out / hex in), client, main-loop webhook, dispatch
+app/api/webhooks/  identiti · payment-rail · itafika
+app/api/checkout/  initiate · status
+```
 
-Vercel:
+## Docs
 
-1. Push to GitHub.
-2. Import in Vercel, add every variable from `.env.example`.
-3. Set `NEXT_PUBLIC_BASE_URL` to the deployed origin.
-4. Flip `PAYPAL_API_BASE` to `https://api-m.paypal.com` and swap to live PayPal credentials when ready.
-5. Register the webhook in the PayPal dashboard pointing at `https://<your-domain>/api/paypal/webhook` and subscribe to `PAYMENT.CAPTURE.*` and `CUSTOMER.DISPUTE.*` events.
+- `docs/RAIL_INTEGRATION_PLAYBOOK.md` — the integration map
+- `docs/KMV_RAILS_INTEGRATION_GUIDE.md` — byte-exact wire formats
+- `docs/DEPLOYMENT_READINESS.md` — go-live checklist + operator blockers
+- `RECAP.md` — sprint state, cross-rail status, blockers
+- `OPERATOR_REQUEST_{CHAMIA,IDENTITI,KP,TODOKU,ITAFIKA,HAKKEN,HELPAN}.md` — operator provisioning asks
+
+## Status
+
+**Phase 1 is code-complete and operator-gated** — all four rails are wired, type-checked, tested, and build green, but go-live is gated on operator credentials and the Kipkiren Pay deployment. Every rail path degrades gracefully (503 / inert-log) when credentials are absent. See `RECAP.md` and `docs/DEPLOYMENT_READINESS.md`.

@@ -16,12 +16,12 @@ export default function Error({
     }, [error]);
 
     return (
-        <div className="bg-white">
+        <div className="bg-background">
             <div className="mx-auto max-w-xl px-4 py-24 sm:px-6 sm:py-32 text-center">
-                <h1 className="text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl">
+                <h1 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
                     Something went wrong
                 </h1>
-                <p className="mt-4 text-base text-gray-600">
+                <p className="mt-4 text-base text-muted-foreground">
                     An unexpected error occurred. Try again, or head back to the home page.
                 </p>
                 <div className="mt-10 flex justify-center gap-4">

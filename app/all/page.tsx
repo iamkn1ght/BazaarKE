@@ -1,6 +1,6 @@
 import { simplifiedProduct } from "../interface";
 import { client } from "../lib/sanity";
-import ProductCard from "../components/ProductCard";
+import ProductExplorer from "../components/ProductExplorer";
 
 export const metadata = {
   title: "All Products — Unique Accessories",
@@ -22,22 +22,19 @@ async function getData() {
 
 export default async function AllProductsPage() {
   const data = await getData();
+  const categories = Array.from(new Set(data.map((p) => p.categoryName).filter(Boolean))).sort();
 
   return (
     <div className="container-x py-12 lg:py-16">
       <header className="max-w-2xl">
-        <h1 className="text-3xl font-bold tracking-tight text-neutral-900 sm:text-4xl">All products</h1>
-        <p className="mt-3 text-neutral-600">Every product in the Unique Accessories catalog.</p>
+        <h1 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl">All products</h1>
+        <p className="mt-3 text-muted-foreground">Every product in the Unique Accessories catalog.</p>
       </header>
 
       {data.length === 0 ? (
-        <p className="mt-12 text-sm text-neutral-500">No products yet. Check back soon.</p>
+        <p className="mt-12 text-sm text-muted-foreground">No products yet. Check back soon.</p>
       ) : (
-        <div className="mt-10 grid grid-cols-2 gap-x-4 gap-y-10 md:grid-cols-3 lg:grid-cols-4">
-          {data.map((product, i) => (
-            <ProductCard key={product._id} product={product} priority={i < 4} />
-          ))}
-        </div>
+        <ProductExplorer products={data} categories={categories} />
       )}
     </div>
   );

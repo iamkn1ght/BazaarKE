@@ -65,7 +65,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
         }),
     };
     return (
-        <div className="bg-white">
+        <div className="bg-background">
             <script
                 type="application/ld+json"
                 dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
@@ -75,24 +75,24 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
                     <ImageGallery images={data.images} />
                     <div className="md:py-8">
                         <div className="mb-4 md:mb-6">
-                            <span className="text-xs font-medium uppercase tracking-wider text-neutral-500">
+                            <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
                                 {data.categoryName}
                             </span>
-                            <h1 className="mt-1.5 text-2xl font-bold tracking-tight text-neutral-900 lg:text-3xl">
+                            <h1 className="mt-1.5 text-2xl font-bold tracking-tight text-foreground lg:text-3xl">
                                 {data.name}
                             </h1>
                         </div>
                         <div className="mb-6">
                             {priceMinor != null ? (
-                                <span className="text-2xl font-semibold text-neutral-900">
+                                <span className="text-2xl font-semibold text-foreground">
                                     {formatKes(priceMinor)}
                                 </span>
                             ) : (
-                                <span className="text-2xl font-semibold text-neutral-900">Price on request</span>
+                                <span className="text-2xl font-semibold text-foreground">Price on request</span>
                             )}
-                            <p className="mt-1 text-sm text-neutral-500">Incl. VAT. Shipping calculated at checkout.</p>
+                            <p className="mt-1 text-sm text-muted-foreground">Incl. VAT. Shipping calculated at checkout.</p>
                         </div>
-                        <div className="mb-6 flex items-center gap-2 text-neutral-600">
+                        <div className="mb-6 flex items-center gap-2 text-muted-foreground">
                             <Truck className="h-5 w-5"/>
                             <span className="text-sm">2 to 4 day delivery across Kenya</span>
                         </div>
@@ -113,9 +113,9 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
                                 </Button>
                             )}
                         </div>
-                        <div className="mt-10 border-t border-neutral-200 pt-8">
-                            <h2 className="text-sm font-semibold uppercase tracking-wider text-neutral-500">Details</h2>
-                            <p className="mt-3 max-w-prose text-base leading-relaxed text-neutral-600">
+                        <div className="mt-10 border-t border-border pt-8">
+                            <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Details</h2>
+                            <p className="mt-3 max-w-prose text-base leading-relaxed text-muted-foreground">
                                 {data.description}
                             </p>
                         </div>

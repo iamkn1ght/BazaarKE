@@ -17,11 +17,11 @@ export default async function SignupPage({
   const { error } = await searchParams;
 
   return (
-    <div className="bg-white">
+    <div className="bg-background">
       <div className="mx-auto max-w-md px-4 py-16 sm:px-6 sm:py-24">
-        <h1 className="text-2xl font-bold tracking-tight text-gray-900">Create your account</h1>
-        <p className="mt-2 text-sm text-gray-500">
-          Checkout never requires an account — this is optional, for faster repeat orders and order updates.
+        <h1 className="text-2xl font-bold tracking-tight text-foreground">Create your account</h1>
+        <p className="mt-2 text-sm text-muted-foreground">
+          Checkout never requires an account - this is optional, for faster repeat orders and order updates.
         </p>
 
         {error && (
@@ -31,27 +31,27 @@ export default async function SignupPage({
         <form action={signUpAction} className="mt-8 space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label htmlFor="name_first" className="block text-sm font-medium text-gray-700">First name</label>
+              <label htmlFor="name_first" className="block text-sm font-medium text-foreground">First name</label>
               <Input id="name_first" name="name_first" required className="mt-1" autoComplete="given-name" />
             </div>
             <div>
-              <label htmlFor="name_last" className="block text-sm font-medium text-gray-700">Last name</label>
+              <label htmlFor="name_last" className="block text-sm font-medium text-foreground">Last name</label>
               <Input id="name_last" name="name_last" required className="mt-1" autoComplete="family-name" />
             </div>
           </div>
           <div>
-            <label htmlFor="phone" className="block text-sm font-medium text-gray-700">Phone (E.164)</label>
+            <label htmlFor="phone" className="block text-sm font-medium text-foreground">Phone (E.164)</label>
             <Input id="phone" name="phone" required placeholder="+254700000000" className="mt-1" inputMode="tel" />
-            <p className="mt-1 text-xs text-gray-400">Used for order updates via SMS. Stored securely by Identiti — never by this store.</p>
+            <p className="mt-1 text-xs text-muted-foreground">Used for order updates via SMS. Stored securely by Identiti - never by this store.</p>
           </div>
-          <label className="flex items-center gap-2 text-sm text-gray-600">
+          <label className="flex items-center gap-2 text-sm text-muted-foreground">
             <input type="checkbox" name="marketing_consent" className="h-4 w-4 rounded border-gray-300" />
             Send me occasional offers and restock alerts.
           </label>
           <Button type="submit" className="w-full">Create account</Button>
         </form>
 
-        <p className="mt-6 text-sm text-gray-500">
+        <p className="mt-6 text-sm text-muted-foreground">
           Already have an account?{" "}
           <Link href="/login" className="font-medium text-primary hover:text-primary/80">Sign in</Link>
         </p>

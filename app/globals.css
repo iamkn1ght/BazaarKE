@@ -87,3 +87,28 @@
     @apply mx-auto w-full max-w-[1400px] px-4 sm:px-6 lg:px-8;
   }
 }
+
+/*
+ * Scroll-reveal: items fade/translate in as they enter the viewport. Pure CSS via scroll-driven
+ * animations (no JS, no library). Progressive: browsers without animation-timeline just show the
+ * element normally; collapses to static under reduced motion.
+ */
+@media (prefers-reduced-motion: no-preference) {
+  @supports (animation-timeline: view()) {
+    @keyframes reveal-up {
+      from {
+        opacity: 0;
+        transform: translateY(24px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+    .reveal-up {
+      animation: reveal-up linear both;
+      animation-timeline: view();
+      animation-range: entry 0% cover 30%;
+    }
+  }
+}
