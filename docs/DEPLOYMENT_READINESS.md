@@ -23,7 +23,7 @@ Phase 1 is **code-complete and green** (lint / tsc / 31 tests / build) but **not
 - [ ] Deploy the **KP Kafka consumer** (`scripts/kp-kafka-consumer.ts`) as a **separate long-running worker** (container / Railway) — it is NOT a Vercel function.
 - [ ] Run `npm run migrate:sanity -- --apply` once `price_minor` is curated (CHAMIA-CURRENCY) — re-prices the catalog + tags legacy orders.
 - [ ] Register the webhook callback URLs with the operator: `/api/webhooks/payment-rail` (when KP ships an HTTP signer), `/api/webhooks/itafika`, `/api/webhooks/identiti` (when ID-14 lands).
-- [ ] (Functional gap) Add a geocoded **shipping-address step** at checkout to populate `order.shipping_destination` — until then `dispatchDelivery` is inert and there is no delivery-fee quote in the cart.
+- [x] ~~(Functional gap) Add a geocoded **shipping-address step** at checkout~~ — **done.** Checkout now collects a required delivery address + map pin (device GPS or a pasted Google-Maps/`lat,lng` pin), validated against the Kenya service-area box, and persists `order.shipping_destination`. A best-effort delivery-fee estimate (`/api/checkout/delivery-quote`) shows in the cart and degrades to "calculated at dispatch" until Itafika is live; the fee is **not** added to the M-Pesa charge (KP-16 observe-only). Remaining gate is operator-side: set **`ITAFIKA_ORIGIN_LAT`/`_LNG`** (store pickup point) — without it dispatch stays inert and no quote is shown.
 - [ ] Smoke each rail once creds land: `npm run smoke:identiti | smoke:payment-rail | smoke:todoku | smoke:itafika`.
 
 ## Watch the first 5 orders (per playbook Week 5 Day 5)

@@ -4,6 +4,7 @@ import { getWriteClient } from "@/app/lib/sanity-write";
 import { getSession, setSession } from "@/app/lib/auth/session";
 import { createCustomer, issueCustomerToken } from "@/app/lib/rails/identiti";
 import { initiateCharge } from "@/app/lib/rails/payment-rail/client";
+import { coerceDestination } from "@/app/lib/rails/itafika/geo";
 import { newTraceparent } from "@/app/lib/rails/_shared/trace";
 import { RailError } from "@/app/lib/rails/_shared/railFetch";
 
@@ -31,6 +32,7 @@ interface ExistingOrder {
   kp_charge_id?: string;
   total_minor?: number;
   traceparent?: string;
+  shipping_destination?: { lat: number; lng: number; label: string };
 }
 
 function parseLines(raw: unknown): CartLine[] {
@@ -69,6 +71,16 @@ export async function POST(req: Request) {
     const lines = parseLines(body?.items);
     if (lines.length === 0) {
       return NextResponse.json({ error: "Cart is empty or invalid" }, { status: 400 });
+    }
+
+    // Geocoded delivery point — required so a paid order can be dispatched to Itafika. The label is
+    // the rider-readable address; lat/lng come from the device GPS pin (or a pasted map pin).
+    const shippingDestination = coerceDestination(body?.shipping_destination);
+    if (!shippingDestination) {
+      return NextResponse.json(
+        { error: "Add a delivery location in Kenya (pin your address) before paying." },
+        { status: 400 },
+      );
     }
 
     const writeClient = getWriteClient();
@@ -154,8 +166,24 @@ export async function POST(req: Request) {
       total_minor: totalMinor,
       business_op_id: attemptId,
       traceparent,
+      shipping_destination: shippingDestination,
       items,
     });
+
+    // If the order pre-existed (a retry before any charge — we already short-circuited once charged),
+    // persist the latest pre-charge address so an edited delivery point isn't silently dropped. Only
+    // write when it actually changed, and do NOT swallow the error: this runs before the charge, so
+    // failing the request closed (the client retries the same attempt) is the safe outcome.
+    const prev = existing?.shipping_destination;
+    const addressChanged =
+      !!existing &&
+      (!prev ||
+        prev.lat !== shippingDestination.lat ||
+        prev.lng !== shippingDestination.lng ||
+        prev.label !== shippingDestination.label);
+    if (addressChanged) {
+      await writeClient.patch(orderDocId).set({ shipping_destination: shippingDestination }).commit();
+    }
 
     let charge;
     let requestId: string | undefined;

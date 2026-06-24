@@ -3,20 +3,29 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useShoppingCart } from "use-shopping-cart";
-import { Check, Loader2 } from "lucide-react";
+import { Check, Loader2, LocateFixed, MapPin } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { formatKes } from "@/app/lib/rails/payment-rail/money";
+import { isServiceablePoint, parseLatLngInput } from "@/app/lib/rails/itafika/geo";
 
 type Phase = "idle" | "initiating" | "awaiting" | "success" | "failed";
+type Coords = { lat: number; lng: number };
+type GeoStatus = "idle" | "locating" | "located";
+type Quote = { available: boolean; price_minor?: number; distance_meters?: number };
 
 const COUNTDOWN_SECONDS = 90;
 const POLL_MS = 3000;
 const REDIRECT_MS = 1100;
+const LABEL_MIN = 3;
 
 // Countdown ring geometry.
 const RING_R = 42;
 const RING_C = 2 * Math.PI * RING_R;
+
+function fmtCoords(c: Coords): string {
+  return `${c.lat.toFixed(5)}, ${c.lng.toFixed(5)}`;
+}
 
 export default function KipkirenPayCheckout() {
   const router = useRouter();
@@ -26,6 +35,16 @@ export default function KipkirenPayCheckout() {
   const [phone, setPhone] = useState("");
   const [name, setName] = useState("");
   const [seconds, setSeconds] = useState(COUNTDOWN_SECONDS);
+
+  // Delivery (geocoded shipping destination): a rider-readable label + a map pin (GPS or pasted).
+  const [label, setLabel] = useState("");
+  const [coords, setCoords] = useState<Coords | null>(null);
+  const [geoStatus, setGeoStatus] = useState<GeoStatus>("idle");
+  const [geoError, setGeoError] = useState<string | null>(null);
+  const [manualOpen, setManualOpen] = useState(false);
+  const [manualText, setManualText] = useState("");
+  const [quote, setQuote] = useState<Quote | null>(null);
+
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const tickRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const redirectRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -56,23 +75,104 @@ export default function KipkirenPayCheckout() {
     }
   }, [phase, seconds]);
 
+  // Best-effort delivery-fee estimate whenever the pin changes. Informational only — it is NOT
+  // added to the amount charged (KP-16 delivery-fee charging is observe-only at MVP).
+  useEffect(() => {
+    if (!coords) {
+      setQuote(null);
+      return;
+    }
+    const ctrl = new AbortController();
+    setQuote(null);
+    (async () => {
+      try {
+        const res = await fetch("/api/checkout/delivery-quote", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ destination: { lat: coords.lat, lng: coords.lng } }),
+          signal: ctrl.signal,
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!ctrl.signal.aborted && res.ok) setQuote(data as Quote);
+      } catch {
+        /* best-effort — a failed quote just shows the calm fallback line */
+      }
+    })();
+    return () => ctrl.abort();
+  }, [coords]);
+
   const total = Math.round(totalPrice ?? 0);
   const phoneClean = phone.replace(/[\s-]/g, "");
   const phoneValid = /^\+?\d{9,15}$/.test(phoneClean);
   const nameValid = name.trim().length >= 2;
+  const labelValid = label.trim().length >= LABEL_MIN;
+  const destValid = coords !== null && labelValid;
   const showPhoneHint = phone.length > 0 && !phoneValid;
-  const canPay = (cartCount ?? 0) > 0 && phase !== "initiating" && phoneValid && nameValid;
+  const canPay = (cartCount ?? 0) > 0 && phase !== "initiating" && phoneValid && nameValid && destValid;
+
+  function useMyLocation() {
+    setGeoError(null);
+    if (typeof navigator === "undefined" || !navigator.geolocation) {
+      setGeoError("Location isn't available on this device — paste a map pin instead.");
+      setManualOpen(true);
+      return;
+    }
+    setGeoStatus("locating");
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const next = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+        setGeoStatus("idle");
+        if (!isServiceablePoint(next.lat, next.lng)) {
+          setGeoError("That location is outside our delivery area (Kenya). Paste a map pin instead.");
+          setManualOpen(true);
+          return;
+        }
+        setCoords(next);
+      },
+      (err) => {
+        setGeoStatus("idle");
+        setManualOpen(true);
+        setGeoError(
+          err.code === err.PERMISSION_DENIED
+            ? "Location permission was blocked — paste a map pin instead."
+            : "Couldn't get your location — paste a map pin instead.",
+        );
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 },
+    );
+  }
+
+  function applyManual() {
+    setGeoError(null);
+    const parsed = parseLatLngInput(manualText);
+    if (!parsed || !isServiceablePoint(parsed.lat, parsed.lng)) {
+      setGeoError("Enter a Kenyan map pin as “lat, lng” or paste a Google Maps link.");
+      return;
+    }
+    setCoords(parsed);
+    setManualOpen(false);
+    setManualText("");
+  }
+
+  function clearPin() {
+    setCoords(null);
+    setQuote(null);
+    setGeoError(null);
+    setManualText("");
+    setManualOpen(false);
+  }
 
   async function start() {
     setError(null);
     setPhase("initiating");
     if (!attemptIdRef.current) attemptIdRef.current = crypto.randomUUID();
     const items = Object.values(cartDetails ?? {}).map((e) => ({ id: e.id, quantity: e.quantity }));
+    const shipping_destination = coords ? { lat: coords.lat, lng: coords.lng, label: label.trim() } : null;
     try {
       const res = await fetch("/api/checkout/initiate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ items, phone, name, checkout_attempt_id: attemptIdRef.current }),
+        body: JSON.stringify({ items, phone, name, shipping_destination, checkout_attempt_id: attemptIdRef.current }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
@@ -180,6 +280,98 @@ export default function KipkirenPayCheckout() {
           {error}
         </p>
       )}
+
+      {/* Delivery address — geocoded shipping destination for last-mile dispatch */}
+      <div className="space-y-2 rounded-md border border-border bg-muted/30 p-3">
+        <div className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          <MapPin className="h-3.5 w-3.5" />
+          Delivery address
+        </div>
+        <textarea
+          value={label}
+          onChange={(e) => setLabel(e.target.value)}
+          rows={2}
+          maxLength={200}
+          autoComplete="shipping street-address"
+          placeholder="Estate / building, house or door no., town, nearest landmark"
+          aria-label="Delivery address"
+          className="flex w-full resize-none rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+        />
+
+        {coords ? (
+          <div
+            role="status"
+            aria-live="polite"
+            className="flex items-center justify-between gap-2 rounded-md border border-primary/30 bg-primary/5 px-2.5 py-1.5 text-xs"
+          >
+            <span className="inline-flex items-center gap-1.5 font-medium text-foreground">
+              <Check className="h-3.5 w-3.5 text-primary" />
+              Location pinned
+              <span className="font-normal tabular-nums text-muted-foreground">{fmtCoords(coords)}</span>
+            </span>
+            <button type="button" onClick={clearPin} className="font-medium text-primary transition-colors hover:text-primary/80">
+              Change
+            </button>
+          </div>
+        ) : (
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={useMyLocation}
+              disabled={geoStatus === "locating"}
+              aria-busy={geoStatus === "locating"}
+            >
+              {geoStatus === "locating" ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin motion-safe:[animation-duration:0.7s]" />
+                  Locating
+                </>
+              ) : (
+                <>
+                  <LocateFixed className="h-4 w-4" />
+                  Use my current location
+                </>
+              )}
+            </Button>
+            <button
+              type="button"
+              onClick={() => setManualOpen((o) => !o)}
+              className="text-xs font-medium text-primary transition-colors hover:text-primary/80"
+            >
+              {manualOpen ? "Hide map pin" : "or paste a map pin"}
+            </button>
+          </div>
+        )}
+
+        {!coords && manualOpen && (
+          <div className="flex items-center gap-2">
+            <Input
+              value={manualText}
+              onChange={(e) => setManualText(e.target.value)}
+              placeholder="-1.2921, 36.8219 or a Google Maps link"
+              aria-label="Map pin coordinates"
+              className="h-9 text-xs"
+            />
+            <Button type="button" variant="secondary" size="sm" onClick={applyManual} disabled={manualText.trim().length === 0}>
+              Apply
+            </Button>
+          </div>
+        )}
+
+        {geoError && (
+          <p role="alert" className="text-xs text-destructive motion-safe:animate-in motion-safe:fade-in motion-safe:duration-150">
+            {geoError}
+          </p>
+        )}
+        {coords && !labelValid && (
+          <p role="status" aria-live="polite" className="text-xs text-muted-foreground">
+            Add the building/house and a landmark so the rider can find you.
+          </p>
+        )}
+      </div>
+
       <div className="space-y-1">
         <Input
           value={phone}
@@ -204,6 +396,24 @@ export default function KipkirenPayCheckout() {
         placeholder="Full name"
         aria-label="Full name"
       />
+
+      {/* Delivery-fee estimate — informational, billed separately on delivery (not part of the M-Pesa charge) */}
+      {coords && quote && (
+        <div className="flex items-center justify-between px-1 text-xs text-muted-foreground">
+          {quote.available && typeof quote.price_minor === "number" && Number.isInteger(quote.price_minor) ? (
+            <>
+              <span>Delivery (est.){typeof quote.distance_meters === "number" ? ` · ${(quote.distance_meters / 1000).toFixed(1)} km` : ""}</span>
+              <span className="tabular-nums">{formatKes(quote.price_minor)} · on delivery</span>
+            </>
+          ) : (
+            <>
+              <span>Delivery fee</span>
+              <span>calculated at dispatch</span>
+            </>
+          )}
+        </div>
+      )}
+
       <Button onClick={start} disabled={!canPay} className="w-full">
         {phase === "initiating" ? (
           <>
