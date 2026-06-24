@@ -46,7 +46,7 @@ export default function Footer() {
         <div className="grid gap-12 lg:grid-cols-2">
           <div className="max-w-md">
             <Link href="/" className="text-2xl font-bold tracking-tight">
-              Unique<span className="text-primary">Accessories</span>
+              Bazaar<span className="text-primary">KE</span>
             </Link>
             <p className="mt-4 text-sm leading-relaxed text-neutral-400">
               Hand-picked electronics, kitchenware, furniture and accessories. Pay with M-Pesa, delivered across Kenya.
@@ -67,7 +67,7 @@ export default function Footer() {
       </div>
       <div className="border-t border-neutral-800">
         <div className="container-x flex flex-col items-center justify-between gap-4 py-6 sm:flex-row">
-          <p className="text-xs text-neutral-500">© {year} Unique Accessories. Pay with M-Pesa.</p>
+          <p className="text-xs text-neutral-500">© {year} BazaarKE. Pay with M-Pesa.</p>
           <div className="flex items-center gap-4 text-neutral-400">
             <Link href="#" aria-label="Instagram" className="transition-colors hover:text-white">
               <Instagram className="h-5 w-5" />

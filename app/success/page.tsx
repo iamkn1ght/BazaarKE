@@ -3,7 +3,7 @@ import { CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export const metadata = {
-    title: "Order Confirmed - Unique Accessories",
+    title: "Order Confirmed | BazaarKE",
     description: "Thanks for your purchase!",
 };
 

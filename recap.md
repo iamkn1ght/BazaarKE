@@ -1,21 +1,24 @@
-# Unique Accessories — Rail Integration RECAP (v1.0)
+# BazaarKE — Rail Integration + Storefront RECAP (v1.2)
 
-**App:** Unique Accessories (Next.js 15 App Router + Sanity)
-**Status:** Phase 1 CODE-COMPLETE across all 4 critical rails; operator-gated for go-live
+**Brand:** BazaarKE (consumer-facing). **Rail identity (unchanged):** app slug `unique_accessories`, legal entity "Unique Accessories Ltd" — as filed in `OPERATOR_REQUEST_*.md`; not renamed until re-provisioned with the operator.
+**App:** Next.js 15 App Router + Sanity, editorial light/dark storefront
+**Status:** Phase 1 rails CODE-COMPLETE + adversarially verified; storefront redesigned + polished; operator-gated for go-live
 **Branch:** `feat/rail-integration-phase-1` (baseline tag `pre-rail-integration`)
-**Latest commit:** Week 5 (hardening + Phase 2 design)
-**Data store:** Sanity (project `d0fzn4cs`, dataset `sanityyy`) — no separate DB
+**Latest commit:** storefront polish (breadcrumbs / related / empty-cart / skeletons) + BazaarKE rename
+**Data store:** Sanity (project `d0fzn4cs`, dataset `sanityyy`)
 **Dedup/cache:** Vercel KV (to provision)
 **Domain:** TBD
 **Authored:** 24 June 2026
 
-> Mirrors the Klokd v3 RECAP structure. Master cross-rail tracker: `…\Platform Rails-instruction pack v1-reboot pack v1.2\RECAP.md`. (Supersedes the pre-rail PayPal app overview — see baseline commit `62c9eb8`.)
+> Mirrors the Klokd v3 RECAP structure. Master cross-rail tracker: `…\Platform Rails-instruction pack v1-reboot pack v1.2\RECAP.md`. (Supersedes the pre-rail PayPal app overview, baseline commit `62c9eb8`.)
 
 ---
 
 ## 1. Headline
 
-PayPal is gone; the storefront is fully rail-aligned — **KES-denominated, M-Pesa-paid (Kipkiren Pay), Identiti-authed, Todoku-communicated, Itafika-delivered**. All four Phase-1 rails are wired, type-checked, lint-clean, 34 unit tests green, and the production build passes. A multi-agent **adversarial-verify** pass (23 agents, 7 dimensions) found 16 issues, confirmed 15 (2 critical, 6 major, 6 minor, 1 nit) — **all 15 fixed** this sprint. The integration is **engineering-complete and operator-gated**: nothing goes live end-to-end until Silvia delivers credentials and KP deploys. Every rail path degrades gracefully (503 / inert-log) when creds are absent — no crashes, no PayPal residue.
+PayPal is gone; the storefront is fully rail-aligned: **KES-denominated, M-Pesa-paid (Kipkiren Pay), Identiti-authed, Todoku-communicated, Itafika-delivered**. All four Phase-1 rails are wired, type-checked, lint-clean, 34 unit tests green, production build passes. A multi-agent **adversarial-verify** pass (23 agents, 7 dimensions) confirmed 15 of 16 findings (2 critical, 6 major, 6 minor, 1 nit), **all fixed**. The integration is **engineering-complete and operator-gated**: nothing goes live end-to-end until Silvia delivers credentials and KP deploys; every rail path degrades gracefully (503 / inert-log) when creds are absent.
+
+Post-Phase-1, the storefront was rebuilt to a world-class editorial standard (New Balance / Adidas / Eastern Edition language) using the installed design skills: Geist type (the Arial-override bug fixed), image-forward hover-zoom product cards, editorial hero, sticky compact nav with a mobile sheet menu, a dark footer, an M-Pesa checkout with a countdown ring + success state, **light/dark mode** (next-themes + semantic tokens), CSS scroll-reveal, a zoom **lightbox**, catalog **filter/sort**, breadcrumbs, related products, an empty-cart state, and route loading skeletons. The consumer brand was renamed **Unique Accessories → BazaarKE** (display + metadata; the rail slug `unique_accessories` is unchanged).
 
 ## 2. Commit log
 
@@ -27,7 +30,13 @@ PayPal is gone; the storefront is fully rail-aligned — **KES-denominated, M-Pe
 | `e9251c8` | 24 Jun | Week 2 — Kipkiren Pay + KES checkout |
 | `6f6224a` | 24 Jun | Week 3 — Todoku comms |
 | `dfa22f8` | 24 Jun | Week 4 — Itafika last-mile |
-| _(this)_ | 24 Jun | Week 5 — §A.11 hardening, 15 adversarial-verify fixes, Phase 2 design, RECAP |
+| `e00ac82` | 24 Jun | Week 5 — §A.11 hardening, 15 adversarial-verify fixes, Phase 2 design, RECAP |
+| `d991f6b` | 24 Jun | Checkout polish — STK-push countdown ring + success state |
+| `d929b6f` | 24 Jun | Home — hero above products |
+| `439e7d0` | 24 Jun | Editorial storefront redesign (design-taste skill) |
+| `61b779f` | 24 Jun | Dark mode, scroll-reveal, lightbox, catalog filter/sort, README |
+| `56e1605` | 24 Jun | Polish — breadcrumbs, related products, empty-cart, loading skeletons |
+| _(this)_ | 24 Jun | Rename to BazaarKE + recap update |
 
 ## 3. Sprint state
 
@@ -38,6 +47,9 @@ PayPal is gone; the storefront is fully rail-aligned — **KES-denominated, M-Pe
 | 3 | Todoku | 🟢 DONE | client; 8 templates; notifyAccount; wired to KP events; partial-failure safe |
 | 4 | Itafika | 🟢 DONE | asymmetric signer (base64/hex + bodyless-GET); client; main-loop webhook; reconciliation observe-only |
 | 5 | Hardening + Phase 2 design | 🟢 DONE | §A.11 audit; adversarial-verify (15 fixes); Hakken/Helpan operator requests; RECAP; deployment readiness |
+| Polish | Storefront redesign | 🟢 DONE | Editorial NB/Adidas/Eastern-Edition pass; Geist font fix; image-forward cards; hero; sticky nav + mobile menu; dark footer |
+| Polish | UX features | 🟢 DONE | Light/dark mode (next-themes + tokens); CSS scroll-reveal; gallery lightbox; catalog filter/sort; breadcrumbs; related products; empty-cart; loading skeletons |
+| Polish | Brand rename | 🟢 DONE | Unique Accessories → **BazaarKE** (display + metadata). Rail slug `unique_accessories` + legal entity unchanged |
 
 ## 4. Deployment + test state
 
@@ -103,4 +115,4 @@ PayPal is gone; the storefront is fully rail-aligned — **KES-denominated, M-Pe
 
 ---
 
-*Unique Accessories Rail Integration RECAP v1.0 · 24 June 2026 · Phase 1 code-complete, operator-gated · Major delta from baseline: PayPal removed, 4 rails integrated, 15 adversarial-verify fixes*
+*BazaarKE Rail Integration + Storefront RECAP v1.2 · 24 June 2026 · Phase 1 code-complete + adversarially verified, storefront redesigned, operator-gated · Major delta from v1.0: editorial redesign, dark mode + UX features, renamed to BazaarKE*

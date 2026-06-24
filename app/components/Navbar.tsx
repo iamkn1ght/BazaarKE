@@ -35,7 +35,7 @@ export default function Navbar() {
             <Menu className="h-5 w-5" />
           </button>
           <Link href="/" className="text-xl font-bold tracking-tight text-foreground md:text-2xl">
-            Unique<span className="text-primary">Accessories</span>
+            Bazaar<span className="text-primary">KE</span>
           </Link>
         </div>
 

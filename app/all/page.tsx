@@ -3,8 +3,8 @@ import { client } from "../lib/sanity";
 import ProductExplorer from "../components/ProductExplorer";
 
 export const metadata = {
-  title: "All Products — Unique Accessories",
-  description: "Browse every product in the Unique Accessories catalog.",
+  title: "All products | BazaarKE",
+  description: "Browse every product in the BazaarKE catalog.",
 };
 
 async function getData() {
@@ -28,7 +28,7 @@ export default async function AllProductsPage() {
     <div className="container-x py-12 lg:py-16">
       <header className="max-w-2xl">
         <h1 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl">All products</h1>
-        <p className="mt-3 text-muted-foreground">Every product in the Unique Accessories catalog.</p>
+        <p className="mt-3 text-muted-foreground">Every product in the BazaarKE catalog.</p>
       </header>
 
       {data.length === 0 ? (

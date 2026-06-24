@@ -1,6 +1,8 @@
-# Unique Accessories
+# BazaarKE
 
 A Next.js 15 e-commerce storefront for Kenya, integrated with the **KMV platform rails**: M-Pesa payments via **Kipkiren Pay**, accounts/KYC via **Identiti**, SMS/WhatsApp via **Todoku**, and last-mile delivery via **Itafika**. KES-denominated, editorial design, Sanity-backed.
+
+> **Brand vs. identity:** the consumer brand is **BazaarKE**. The operator-provisioned rail identity (app slug `unique_accessories`, tenant/anchor names, and the legal entity "Unique Accessories Ltd") is unchanged in the rail clients and `OPERATOR_REQUEST_*.md` files until re-provisioned with the operator.
 
 ## Stack
 

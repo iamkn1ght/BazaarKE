@@ -6,7 +6,7 @@ import { signUpAction } from "@/app/lib/auth/actions";
 
 export const metadata: Metadata = {
   title: "Create account",
-  description: "Create a Unique Accessories account.",
+  description: "Create a BazaarKE account.",
 };
 
 export default async function SignupPage({

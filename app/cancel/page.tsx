@@ -3,7 +3,7 @@ import { XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export const metadata = {
-    title: "Checkout Cancelled - Unique Accessories",
+    title: "Checkout Cancelled | BazaarKE",
     description: "Your checkout was cancelled.",
 };
 

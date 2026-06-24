@@ -6,7 +6,7 @@ import { loginAction } from "@/app/lib/auth/actions";
 
 export const metadata: Metadata = {
   title: "Sign in",
-  description: "Sign in to Unique Accessories.",
+  description: "Sign in to BazaarKE.",
 };
 
 export default async function LoginPage({

@@ -21,7 +21,7 @@ interface OrderForDispatch {
 function storeOrigin(): GeoPoint | null {
   const lat = Number(process.env.ITAFIKA_ORIGIN_LAT);
   const lng = Number(process.env.ITAFIKA_ORIGIN_LNG);
-  const label = process.env.ITAFIKA_ORIGIN_LABEL ?? "Unique Accessories store";
+  const label = process.env.ITAFIKA_ORIGIN_LABEL ?? "BazaarKE store";
   if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
   return { lat, lng, label };
 }

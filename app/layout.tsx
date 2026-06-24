@@ -21,21 +21,21 @@ const siteUrl = process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:3000";
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   title: {
-    default: "Unique Accessories",
-    template: "%s — Unique Accessories",
+    default: "BazaarKE",
+    template: "%s | BazaarKE",
   },
-  description: "Hand-picked electronics, kitchenware, furniture and accessories.",
+  description: "Hand-picked electronics, kitchenware, furniture and accessories. Pay with M-Pesa, delivered across Kenya.",
   openGraph: {
-    title: "Unique Accessories",
-    description: "Hand-picked electronics, kitchenware, furniture and accessories.",
+    title: "BazaarKE",
+    description: "Hand-picked electronics, kitchenware, furniture and accessories. Pay with M-Pesa, delivered across Kenya.",
     url: siteUrl,
-    siteName: "Unique Accessories",
+    siteName: "BazaarKE",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Unique Accessories",
-    description: "Hand-picked electronics, kitchenware, furniture and accessories.",
+    title: "BazaarKE",
+    description: "Hand-picked electronics, kitchenware, furniture and accessories. Pay with M-Pesa, delivered across Kenya.",
   },
 };
 
