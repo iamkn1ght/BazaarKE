@@ -1,87 +1,95 @@
 import Image from "next/image";
-import { client, urlFor } from "../lib/sanity";
 import Link from "next/link";
+import { ArrowRight } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { client, urlFor } from "../lib/sanity";
+
+const categories = [
+  { name: "Electronics", href: "/Electronics" },
+  { name: "Kitchenware", href: "/Kitchenware" },
+  { name: "Furniture", href: "/Furniture" },
+  { name: "Accessories", href: "/Accessories" },
+];
 
 async function getData() {
-    const query = "*[_type == 'heroImage'] {image1, image2}"
-
-    const data = await client.fetch(query);
-
-    return data;
+  const query = "*[_type == 'heroImage'] {image1, image2}";
+  return client.fetch(query);
 }
 
 export default async function Hero() {
-    const data = await getData()
-    const { image1, image2 } = data[0] || {}; 
-    return(
-        <section className="mx-auto max-w-2xl px-4 sm:pb-6 lg:max-w-7xl lg:px-8">
-            <div className="flex flex-wrap items-center justify-between md:flex-nowrap md:gap-8">
-               
-                <div className="w-full mb-6 md:mb-0 md:w-1/2">
-                    <h1 className="mb-4 text-4xl font-bold text-black sm:text-5xl md:mb-8 md:text-6xl">
-                        Your Everyday Store
-                    </h1>
-                    <p className="max-w-md leading-relaxed text-gray-500 xl:text-lg">
-                        Discover high-quality products tailored to your needs.
-                    </p>
-                </div>
+  const data = await getData();
+  const { image1, image2 } = data?.[0] ?? {};
 
+  return (
+    <section className="container-x">
+      <div className="grid items-center gap-10 pt-10 pb-12 lg:grid-cols-12 lg:gap-12 lg:pt-16">
+        {/* Copy */}
+        <div className="lg:col-span-5">
+          <h1 className="text-4xl font-bold leading-[1.05] tracking-tight text-neutral-900 sm:text-5xl lg:text-6xl">
+            Your everyday store.
+          </h1>
+          <p className="mt-5 max-w-md text-base leading-relaxed text-neutral-600 md:text-lg">
+            Hand-picked electronics, kitchenware, furniture and accessories, delivered across Kenya.
+          </p>
+          <div className="mt-8 flex items-center gap-6">
+            <Button asChild size="lg">
+              <Link href="/all">Shop all</Link>
+            </Button>
+            <Link
+              href="/all"
+              className="group inline-flex items-center gap-1.5 text-sm font-medium text-neutral-900"
+            >
+              New arrivals
+              <ArrowRight className="h-4 w-4 transition-transform duration-200 ease-out group-hover:translate-x-0.5" />
+            </Link>
+          </div>
+        </div>
 
-                {/* Images */}
-                <div className="w-full flex gap-6 md:w-1/2">
-                    {/* Image 1 */}
-                    <div className="flex-1 overflow-hidden rounded-lg bg-gray-100 shadow-lg">
-                        {image1 && (
-                            <Image
-                                src={urlFor(image1).url()}
-                                alt="image1"
-                                className="h-full w-full object-cover object-center md:h-50"
-                                width={150} 
-                                height={150}
-                            />
-                        )}
-                    </div>
-
-                    {/* Image 2 */}
-                    <div className="flex-1 overflow-hidden rounded-lg bg-gray-100 shadow-lg">
-                        {image2 && (
-                            <Image
-                                src={urlFor(image2).url()}
-                                alt="image2"
-                                className="h-full w-full object-cover object-center md:h-50"
-                                width={150} 
-                                height={150}
-                            />
-                        )}
-                    </div>
-                </div>
+        {/* Images */}
+        <div className="lg:col-span-7">
+          <div className="grid grid-cols-2 gap-4 sm:gap-6">
+            <div className="relative aspect-[3/4] overflow-hidden rounded-2xl bg-neutral-100">
+              {image1 && (
+                <Image
+                  src={urlFor(image1).width(800).height(1000).url()}
+                  alt=""
+                  fill
+                  priority
+                  sizes="(min-width: 1024px) 30vw, 45vw"
+                  className="object-cover"
+                />
+              )}
             </div>
-                
-            <div className="flex flex-col items-center justify-between gap-16 md:flex-row"> {/* Increased gap */}
-    <div className="flex h-16 w-full divide-x overflow-hidden rounded-lg border md:w-auto"> {/* Adjusted width */}
-        <Link
-            href="/Electronics"
-            className="flex w-full items-center justify-center px-4 text-gray-500 transition duration-100 hover:bg-gray-100 active:bg-gray-200 md:w-1/4"> {/* Added padding */}
-            Electronics
-        </Link>
-        <Link
-            href="/Kitchenware"
-            className="flex w-full items-center justify-center px-4 text-gray-500 transition duration-100 hover:bg-gray-100 active:bg-gray-200 md:w-1/4"> {/* Added padding */}
-            Kitchenware
-        </Link>
-        <Link
-            href="/Furniture"
-            className="flex w-full items-center justify-center px-4 text-gray-500 transition duration-100 hover:bg-gray-100 active:bg-gray-200 md:w-1/4"> {/* Added padding */}
-            Furniture
-        </Link>
-        <Link
-            href="/Accessories"
-            className="flex w-full items-center justify-center px-4 text-gray-500 transition duration-100 hover:bg-gray-100 active:bg-gray-200 md:w-1/4"> {/* Added padding */}
-            Accessories
-        </Link>
-    </div>
-</div>
+            <div className="relative mt-8 aspect-[3/4] overflow-hidden rounded-2xl bg-neutral-100 sm:mt-12">
+              {image2 && (
+                <Image
+                  src={urlFor(image2).width(800).height(1000).url()}
+                  alt=""
+                  fill
+                  sizes="(min-width: 1024px) 30vw, 45vw"
+                  className="object-cover"
+                />
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
 
-        </section>
-    )
+      {/* Category strip */}
+      <div className="border-t border-neutral-200 py-6">
+        <div className="flex flex-wrap items-center gap-x-8 gap-y-3">
+          <span className="text-xs font-semibold uppercase tracking-wider text-neutral-400">Shop by category</span>
+          {categories.map((c) => (
+            <Link
+              key={c.name}
+              href={c.href}
+              className="text-sm font-medium text-neutral-700 transition-colors hover:text-primary"
+            >
+              {c.name}
+            </Link>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
 }

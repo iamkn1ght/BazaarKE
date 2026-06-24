@@ -41,5 +41,9 @@ export default function AddToBag({
     handleCartClick();
   }
 
-  return <Button onClick={handleClick}>Add To Cart</Button>;
+  return (
+    <Button onClick={handleClick} size="lg" className="w-full sm:w-auto sm:min-w-[14rem]">
+      Add to bag
+    </Button>
+  );
 }

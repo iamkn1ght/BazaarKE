@@ -1,12 +1,10 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { simplifiedProduct } from "../interface";
 import { client } from "../lib/sanity";
-import Image from "next/image";
-import { priceLabel } from "../lib/rails/payment-rail/money";
+import ProductCard from "../components/ProductCard";
 
 async function getData(category: string) {
-    const query = `*[_type == "product" && category->name == $category] {
+  const query = `*[_type == "product" && category->name == $category] {
         _id,
         "imageUrl": images[0].asset->url,
         price,
@@ -15,56 +13,39 @@ async function getData(category: string) {
         "slug": slug.current,
         "categoryName": category->name
     }`;
-    return client.fetch<simplifiedProduct[]>(query, { category });
+  return client.fetch<simplifiedProduct[]>(query, { category });
 }
 
 export async function generateMetadata({ params }: { params: Promise<{ category: string }> }): Promise<Metadata> {
-    const { category } = await params;
-    return {
-        title: category,
-        description: `Browse ${category} at Unique Accessories.`,
-    };
+  const { category } = await params;
+  return {
+    title: category,
+    description: `Browse ${category} at Unique Accessories.`,
+  };
 }
 
 export default async function CategoryPage({ params }: { params: Promise<{ category: string }> }) {
-    const { category } = await params;
-    const data = await getData(category);
-    return (
-        <div className="bg-white">
-            <div className="mx-auto max-w-2xl px-4 sm:px-6 lg:max-w-7xl lg:px-8">
-                <div className="flex justify-between items-center">
-                    <h2 className="text-2xl font-bold tracking-tight text-gray-900">Our Products for {category}</h2>
-                </div>
+  const { category } = await params;
+  const data = await getData(category);
 
-                {data.length === 0 && (
-                    <p className="mt-10 text-center text-gray-500">No products in this category yet.</p>
-                )}
+  return (
+    <div className="container-x py-12 lg:py-16">
+      <header className="max-w-2xl">
+        <h1 className="text-3xl font-bold tracking-tight text-neutral-900 sm:text-4xl">{category}</h1>
+        <p className="mt-3 text-neutral-600">
+          {data.length} {data.length === 1 ? "product" : "products"} in {category}.
+        </p>
+      </header>
 
-                <div className="mt-6 grid grid-cols-1 gap-x-6 gap-y-10 sm:grid-cols-2 lg:grid-cols-4 xl:gap-x-8">
-                    {data.map((product) => (
-                        <div key={product._id} className="group relative">
-                            <div className="aspect-square w-full overflow-hidden rounded-md bg-gray-200 group-hover:opacity-75 lg:h-80">
-                                <Image 
-                                    src={product.imageUrl} 
-                                    alt="product image" 
-                                    className="w-full h-full object-cover object-center lg:h-full lg:w-full" 
-                                    width={200} 
-                                    height={200}
-                                />
-                            </div>
-                            <div className="mt-4 flex justify-between">
-                                <div>
-                                    <h3 className="text-sm text-gray-700">
-                                        <Link href={`/product/${product.slug}`}>{product.name}</Link>
-                                    </h3>
-                                    <p className="mt-1 text-sm text-gray-500">{product.categoryName}</p>
-                                </div>
-                                <p className="text-sm font-medium text-gray-900">{priceLabel(product)}</p>
-                            </div>
-                        </div>
-                    ))}
-                </div>
-            </div>
+      {data.length === 0 ? (
+        <p className="mt-12 text-sm text-neutral-500">No products in this category yet.</p>
+      ) : (
+        <div className="mt-10 grid grid-cols-2 gap-x-4 gap-y-10 md:grid-cols-3 lg:grid-cols-4">
+          {data.map((product, i) => (
+            <ProductCard key={product._id} product={product} priority={i < 4} />
+          ))}
         </div>
-    );
+      )}
+    </div>
+  );
 }

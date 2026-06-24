@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { Star, Truck } from "lucide-react";
+import { Truck } from "lucide-react";
 import { client, urlFor } from "@/app/lib/sanity";
 import { fullProduct } from "@/app/interface";
 import ImageGallery from "@/app/components/imageGallery";
@@ -74,43 +74,29 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
                 <div className="grid gap-8 md:grid-cols-2">
                     <ImageGallery images={data.images} />
                     <div className="md:py-8">
-                        <div className="mb-2 md:mb-3">
-                            <span className="mb-0.5 inline-block text-gray-500">
+                        <div className="mb-4 md:mb-6">
+                            <span className="text-xs font-medium uppercase tracking-wider text-neutral-500">
                                 {data.categoryName}
                             </span>
-                            <h2 className="text-2xl font-bold text-gray-800 lg:text-3xl">
+                            <h1 className="mt-1.5 text-2xl font-bold tracking-tight text-neutral-900 lg:text-3xl">
                                 {data.name}
-                            </h2>
+                            </h1>
                         </div>
-                        <div className="mb-6 flex items-center gap-3 md:mb-10">
-                            <Button className="rounded-full gap-x-2">
-                                <span className="text-sm">4.2</span>
-                                <Star className="h-5 w-5"/>
-                            </Button>
-                            <span className="text-sm text-gray-500 transition duration-100">43 Ratings</span>
-                        </div>
-                        <div className="mb-4">
+                        <div className="mb-6">
                             {priceMinor != null ? (
-                                <div className="flex items-end gap-2">
-                                    <span className="text-xl font-bold text-gray-800 md:text-2xl">
-                                        {formatKes(priceMinor)}
-                                    </span>
-                                    <span className="mb-0.5 text-red-500 line-through">
-                                        {formatKes(priceMinor + 3000)}
-                                    </span>
-                                </div>
+                                <span className="text-2xl font-semibold text-neutral-900">
+                                    {formatKes(priceMinor)}
+                                </span>
                             ) : (
-                                <span className="text-xl font-bold text-gray-800 md:text-2xl">Price on request</span>
+                                <span className="text-2xl font-semibold text-neutral-900">Price on request</span>
                             )}
-                            <span className="text-sm text-gray-500">
-                                Incl. VAT plus Shipping
-                            </span>
+                            <p className="mt-1 text-sm text-neutral-500">Incl. VAT. Shipping calculated at checkout.</p>
                         </div>
-                        <div className="mb-6 flex items-center gap-2 text-gray-500">
-                            <Truck className="w-6 h-6"/>
-                            <span className="text-sm">2-4 Day Shipping</span>
+                        <div className="mb-6 flex items-center gap-2 text-neutral-600">
+                            <Truck className="h-5 w-5"/>
+                            <span className="text-sm">2 to 4 day delivery across Kenya</span>
                         </div>
-                        <div className="flex gap-2.5">
+                        <div>
                             {priceMinor != null ? (
                                 <AddToBag
                                     key={data._id}
@@ -122,12 +108,17 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
                                     priceMinor={priceMinor}
                                 />
                             ) : (
-                                <Button disabled>Currently unavailable</Button>
+                                <Button size="lg" className="w-full sm:w-auto sm:min-w-[14rem]" disabled>
+                                    Currently unavailable
+                                </Button>
                             )}
                         </div>
-                        <p className="mt-12 text-base text-gray-500 tracking-wide">
-                            {data.description}
-                        </p>
+                        <div className="mt-10 border-t border-neutral-200 pt-8">
+                            <h2 className="text-sm font-semibold uppercase tracking-wider text-neutral-500">Details</h2>
+                            <p className="mt-3 max-w-prose text-base leading-relaxed text-neutral-600">
+                                {data.description}
+                            </p>
+                        </div>
                     </div>
                 </div>
             </div>
