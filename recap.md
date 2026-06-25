@@ -1,14 +1,14 @@
-# BazaarKE — Rail Integration + Storefront RECAP (v1.2)
+# BazaarKE — Rail Integration + Storefront RECAP (v1.3)
 
 **Brand:** BazaarKE (consumer-facing). **Rail identity (unchanged):** app slug `unique_accessories`, legal entity "Unique Accessories Ltd" — as filed in `OPERATOR_REQUEST_*.md`; not renamed until re-provisioned with the operator.
 **App:** Next.js 15 App Router + Sanity, editorial light/dark storefront
-**Status:** Phase 1 rails CODE-COMPLETE + adversarially verified; storefront redesigned + polished; operator-gated for go-live
-**Branch:** `feat/rail-integration-phase-1` (baseline tag `pre-rail-integration`)
-**Latest commit:** storefront polish (breadcrumbs / related / empty-cart / skeletons) + BazaarKE rename
+**Status:** Phase 1 rails CODE-COMPLETE + adversarially verified; geocoded delivery step shipped; **Phase-2 Helpan + Hakken UA scaffolds built (inert, fail-closed)**; storefront redesigned + motion-polished; operator-gated for go-live
+**Branch:** `feat/rail-integration-phase-1` (baseline tag `pre-rail-integration`) · **pushed:** github.com/iamkn1ght/BazaarKE
+**Latest commit:** `90d2018` — cart item-removal animation (storefront motion pass)
 **Data store:** Sanity (project `d0fzn4cs`, dataset `sanityyy`)
 **Dedup/cache:** Vercel KV (to provision)
 **Domain:** TBD
-**Authored:** 24 June 2026
+**Authored:** 24 June 2026 · **updated 26 June 2026**
 
 > Mirrors the Klokd v3 RECAP structure. Master cross-rail tracker: `…\Platform Rails-instruction pack v1-reboot pack v1.2\RECAP.md`. (Supersedes the pre-rail PayPal app overview, baseline commit `62c9eb8`.)
 
@@ -16,7 +16,9 @@
 
 ## 1. Headline
 
-PayPal is gone; the storefront is fully rail-aligned: **KES-denominated, M-Pesa-paid (Kipkiren Pay), Identiti-authed, Todoku-communicated, Itafika-delivered**. All four Phase-1 rails are wired, type-checked, lint-clean, 34 unit tests green, production build passes. A multi-agent **adversarial-verify** pass (23 agents, 7 dimensions) confirmed 15 of 16 findings (2 critical, 6 major, 6 minor, 1 nit), **all fixed**. The integration is **engineering-complete and operator-gated**: nothing goes live end-to-end until Silvia delivers credentials and KP deploys; every rail path degrades gracefully (503 / inert-log) when creds are absent.
+PayPal is gone; the storefront is fully rail-aligned: **KES-denominated, M-Pesa-paid (Kipkiren Pay), Identiti-authed, Todoku-communicated, Itafika-delivered**. All four Phase-1 rails are wired, type-checked, lint-clean, **168 unit tests green** (34 at Phase-1 close), production build passes. A multi-agent **adversarial-verify** pass (23 agents, 7 dimensions) confirmed 15 of 16 findings (2 critical, 6 major, 6 minor, 1 nit), **all fixed**. The integration is **engineering-complete and operator-gated**: nothing goes live end-to-end until Silvia delivers credentials and KP deploys; every rail path degrades gracefully (503 / inert-log) when creds are absent.
+
+**Post-Phase-1 delta (24–26 Jun).** (1) The last UA-side go-live gap closed: a **geocoded delivery-address step** at checkout (device-GPS pin + paste fallback, Kenya service-area validated) populates `order.shipping_destination`, plus a graceful-degrade delivery-fee quote — Itafika dispatch flips live the moment the store origin + creds land. (2) The money-critical **KP/Itafika event handlers** were split functional-core/imperative-shell and the orchestration is now unit-tested (the locus of the prior critical bugs). (3) **Phase-2 scaffolds built, inert + fail-closed:** **Helpan** agent-runtime (RS256 delegated-authority verified vs Identiti JWKS, revocation store, dual-role dispatch target, `initiated_by:"agent"` audit) and **Hakken** discovery (§10.7 banned-key + PII walls enforced app-side at any depth, `price_range_kes` banding, isolated three-header auth, `getHakkenJwt` deferral). Each shipped with its own adversarial review — Hakken's caught 2 *critical* leaks (a too-broad `source_payment*` carve-out and a price-band that exposed the exact price on round prices), both fixed before commit. (4) A **motion & micro-interactions** pass (design-motion-principles, Jakub/Emil weighting): custom easing tokens replacing every bare ease curve, removed a looping pulse anti-pattern, and an animated cart-item removal.
 
 Post-Phase-1, the storefront was rebuilt to a world-class editorial standard (New Balance / Adidas / Eastern Edition language) using the installed design skills: Geist type (the Arial-override bug fixed), image-forward hover-zoom product cards, editorial hero, sticky compact nav with a mobile sheet menu, a dark footer, an M-Pesa checkout with a countdown ring + success state, **light/dark mode** (next-themes + semantic tokens), CSS scroll-reveal, a zoom **lightbox**, catalog **filter/sort**, breadcrumbs, related products, an empty-cart state, and route loading skeletons. The consumer brand was renamed **Unique Accessories → BazaarKE** (display + metadata; the rail slug `unique_accessories` is unchanged).
 
@@ -36,7 +38,13 @@ Post-Phase-1, the storefront was rebuilt to a world-class editorial standard (Ne
 | `439e7d0` | 24 Jun | Editorial storefront redesign (design-taste skill) |
 | `61b779f` | 24 Jun | Dark mode, scroll-reveal, lightbox, catalog filter/sort, README |
 | `56e1605` | 24 Jun | Polish — breadcrumbs, related products, empty-cart, loading skeletons |
-| _(this)_ | 24 Jun | Rename to BazaarKE + recap update |
+| `c9a377c` | 24 Jun | Rename to BazaarKE + recap update |
+| `5f44394` | 24 Jun | Geocoded delivery-address step + delivery-fee quote (BZ-Ops gap closed) |
+| `f021c56` | 25 Jun | Unit-test money-critical KP/Itafika handlers (functional-core/shell split) |
+| `7729ebd` | 25 Jun | Helpan Phase-2 agent-runtime integration (inert, fail-closed) — BZ-P2-Hp |
+| `2ce40e9` | 25 Jun | Hakken Phase-2 discovery integration (inert, fail-closed) — BZ-P2-Hk |
+| `df636b9` | 25 Jun | Storefront motion pass — custom easing, pulse anti-pattern, card legibility |
+| `90d2018` | 26 Jun | Cart item-removal animation (meaningful exit) |
 
 ## 3. Sprint state
 
@@ -50,6 +58,11 @@ Post-Phase-1, the storefront was rebuilt to a world-class editorial standard (Ne
 | Polish | Storefront redesign | 🟢 DONE | Editorial NB/Adidas/Eastern-Edition pass; Geist font fix; image-forward cards; hero; sticky nav + mobile menu; dark footer |
 | Polish | UX features | 🟢 DONE | Light/dark mode (next-themes + tokens); CSS scroll-reveal; gallery lightbox; catalog filter/sort; breadcrumbs; related products; empty-cart; loading skeletons |
 | Polish | Brand rename | 🟢 DONE | Unique Accessories → **BazaarKE** (display + metadata). Rail slug `unique_accessories` + legal entity unchanged |
+| BZ-Ops | Geocoded delivery step | 🟢 DONE | Required + server-validated `shipping_destination` (GPS pin / paste, KE service-area); graceful delivery-fee quote; un-inerts Itafika dispatch once origin+creds land |
+| Tests | Money-critical handler coverage | 🟢 DONE | KP/Itafika handlers → functional-core/shell; orchestration unit-tested (forward-only, dedup claim/release, side-effects-only-on-apply, swallowed comms failures) |
+| BZ-P2-Hp | Helpan agent runtime | 🟢 BUILT (inert) | RS256 delegated-authority (vs Identiti JWKS) + claim validation; revocation store + AUTHORITY_REVOKED webhook; dual-role `/api/agent/checkout`; `initiated_by:"agent"` audit; fail-closed |
+| BZ-P2-Hk | Hakken discovery | 🟢 BUILT (inert) | §10.7 banned-key + PII walls (any-depth, fail-closed); `price_range_kes` band; isolated three-header auth; vertical-isolation filter; `getHakkenJwt` deferral |
+| Polish | Storefront motion pass | 🟢 DONE | design-motion-principles (Jakub/Emil): custom easing tokens (no bare ease); removed looping-pulse anti-pattern; perf-aware scroll-reveal; animated cart-item removal |
 
 ## 4. Deployment + test state
 
@@ -57,8 +70,8 @@ Post-Phase-1, the storefront was rebuilt to a world-class editorial standard (Ne
 |---|---|
 | `npm run lint` | ✅ clean |
 | `npx tsc --noEmit` | ✅ clean |
-| `npm run test` | ✅ 34/34 (`node:test` via tsx) |
-| `npm run build` | ✅ 17 routes |
+| `npm run test` | ✅ 168/168 (`node:test` via `node --conditions=react-server --import tsx`) |
+| `npm run build` | ✅ 20 routes (+`/api/agent/checkout`, `/api/webhooks/helpan`, `/api/checkout/delivery-quote`) |
 | Rail health | Identiti/Todoku/Itafika `200`; KP DNS unresolved (not deployed) |
 | Local run | ✅ browser-verified — KES storefront + M-Pesa checkout UI |
 | Production deploy | ❌ not done — operator-gated (see §7 + `docs/DEPLOYMENT_READINESS.md`) |
@@ -84,7 +97,7 @@ Post-Phase-1, the storefront was rebuilt to a world-class editorial standard (Ne
 
 ## 7. Outstanding blockers
 
-**Operator (Silvia):** Identiti sandbox secret (queue); KP-1-Ops deploy + secret + tier_3 + Kafka creds + HTTP signer; Todoku tenant/ULIDs/secret/UAKE; Itafika anchor/secret/callback + OPS-4; Hakken plugin/secret; Helpan agent/secrets. **Chamia:** CHAMIA-ENTITY registration date (gates KP tier_3). **UA:** provision Vercel KV; deploy the Kafka consumer worker; run the KES re-price migration; add a geocoded shipping-address step (gates Itafika dispatch + delivery-fee quote). Full checklist: `docs/DEPLOYMENT_READINESS.md`.
+**Operator (Silvia):** Identiti sandbox secret (queue) + multi-audience minting for `aud=hakken` + JWKS delegated-authority key (Helpan); KP-1-Ops deploy + secret + tier_3 + Kafka creds + HTTP signer; Todoku tenant/ULIDs/secret/UAKE; Itafika anchor/secret/callback + OPS-4; Hakken plugin/secret; Helpan agent/secrets. **Chamia:** CHAMIA-ENTITY registration date (gates KP tier_3). **UA:** provision Vercel KV; deploy the Kafka consumer worker; run the KES re-price migration; set `ITAFIKA_ORIGIN_LAT/LNG` (store pickup point — last gate to un-inert dispatch now that the delivery step ships). Full checklist: `docs/DEPLOYMENT_READINESS.md`.
 
 ## 8. Architecture invariants (locked)
 
@@ -104,15 +117,16 @@ Post-Phase-1, the storefront was rebuilt to a world-class editorial standard (Ne
 - **Docs:** `docs/RAIL_INTEGRATION_PLAYBOOK.md`, `docs/KMV_RAILS_INTEGRATION_GUIDE.md` (wire), `docs/PAYPAL_REMOVAL_RUNBOOK.md` + `_RESULT.md`, `docs/{KP,TODOKU,ITAFIKA}_INTEGRATION_RESULT.md`, `docs/DEPLOYMENT_READINESS.md`
 - **Operator requests:** `OPERATOR_REQUEST_{CHAMIA,IDENTITI,KP,TODOKU,ITAFIKA,HAKKEN,HELPAN}.md`
 - **Smoke:** `npm run smoke:{identiti,payment-rail,todoku,itafika}`
-- **Rail code:** `app/lib/rails/{_shared,identiti,payment-rail,todoku,itafika}/`; webhooks `app/api/webhooks/{identiti,payment-rail,itafika}/`; checkout `app/api/checkout/{initiate,status}/`
+- **Rail code:** `app/lib/rails/{_shared,identiti,payment-rail,todoku,itafika,helpan,hakken}/`; webhooks `app/api/webhooks/{identiti,payment-rail,itafika,helpan}/`; checkout `app/api/checkout/{initiate,status,delivery-quote}/`; agent dispatch target `app/api/agent/checkout/`
 
 ## 10. Tech debt
 
-- ~~Handler-level integration tests (dedup release, forward-only transitions) need a Sanity/KV mock harness — deferred.~~ **Done:** the KP/Itafika handlers were split functional-core/imperative-shell and the orchestration is now unit-tested (forward-only transitions, dedup claim/release, side-effects-only-on-apply, swallowed comms failures) via injected deps — no live Sanity/KV needed. Suite is now **132 tests** (was 34): + geocoded-delivery geo helpers, dedup/trace, KP/Itafika transitions + orchestration, and the Helpan agent-runtime (authority/RS256/revocation/dispatch). Tests run under `node --conditions=react-server` (`server-only` devDep resolves to its inert stub).
+- ~~Handler-level integration tests deferred.~~ **Done:** KP/Itafika handlers split functional-core/imperative-shell; orchestration unit-tested via injected deps. Suite is now **168 tests** (was 34): + geocoded-delivery geo helpers, dedup/trace, KP/Itafika transitions + orchestration, Helpan (authority/RS256/revocation/dispatch/webhook), Hakken (containment walls/banding/three-header). Tests run under `node --conditions=react-server` (`server-only` devDep → inert stub).
+- ~~Checkout lacks a geocoded shipping-address step.~~ **Done** (`5f44394`) — remaining gate is operator-side `ITAFIKA_ORIGIN_*`.
 - README "Checkout flow" still describes PayPal — rewrite for the KP STK-push flow before launch.
-- Cart carries `price_minor`; until `npm run migrate:sanity -- --apply` runs, products fall back to `price*100`.
-- Checkout lacks a geocoded shipping-address step → Itafika dispatch + cart delivery-fee quote are wired-but-inert.
+- Cart carries `price_minor`; until `npm run migrate:sanity -- --apply` runs, products fall back to `price*100` (catalog prices are placeholder test data, e.g. KES 20 AirPods).
+- Phase-2 go-live (Helpan/Hakken) needs Identiti multi-audience JWTs + JWKS DA key + the respective plugin/agent registration before the inert scaffolds activate.
 
 ---
 
-*BazaarKE Rail Integration + Storefront RECAP v1.2 · 24 June 2026 · Phase 1 code-complete + adversarially verified, storefront redesigned, operator-gated · Major delta from v1.0: editorial redesign, dark mode + UX features, renamed to BazaarKE*
+*BazaarKE Rail Integration + Storefront RECAP v1.3 · updated 26 June 2026 · Phase 1 code-complete + adversarially verified; geocoded delivery step shipped; Phase-2 Helpan + Hakken UA scaffolds built (inert, fail-closed); storefront motion-polished; operator-gated · Delta from v1.2: delivery step, money-critical handler tests, Helpan + Hakken Phase-2 scaffolds (+134 tests → 168), storefront motion pass*
