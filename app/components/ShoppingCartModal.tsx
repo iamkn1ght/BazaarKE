@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { useShoppingCart } from "use-shopping-cart";
 import Image from "next/image";
@@ -8,9 +9,32 @@ import { Button } from "@/components/ui/button";
 import KipkirenPayCheckout from "./KipkirenPayCheckout";
 import { formatKes } from "@/app/lib/rails/payment-rail/money";
 
+const EXIT_MS = 280;
+
 export default function ShoppingCartModal() {
   const { cartCount, shouldDisplayCart, handleCartClick, cartDetails, removeItem, totalPrice } = useShoppingCart();
   const empty = (cartCount ?? 0) === 0;
+  // Items mid-exit: kept in the list (still in cartDetails) but collapsed/faded, then actually removed.
+  const [exiting, setExiting] = useState<Record<string, boolean>>({});
+
+  function remove(id: string) {
+    // Removal is a MEANINGFUL exit (item deletion) — animate it out, then remove. Honor reduced motion.
+    const reduce =
+      typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    if (reduce) {
+      removeItem(id);
+      return;
+    }
+    setExiting((e) => ({ ...e, [id]: true }));
+    window.setTimeout(() => {
+      removeItem(id);
+      setExiting((e) => {
+        const next = { ...e };
+        delete next[id];
+        return next;
+      });
+    }, EXIT_MS);
+  }
 
   return (
     <Sheet open={shouldDisplayCart} onOpenChange={() => handleCartClick()}>
@@ -36,33 +60,43 @@ export default function ShoppingCartModal() {
           <div className="flex h-full flex-col justify-between overflow-hidden">
             <ul className="-my-6 flex-1 divide-y divide-border overflow-y-auto">
               {Object.values(cartDetails ?? {}).map((entry) => (
-                <li key={entry.id} className="flex py-6">
-                  <div className="h-24 w-24 flex-shrink-0 overflow-hidden rounded-md border border-border bg-muted">
-                    <Image
-                      src={entry.image as string}
-                      alt={entry.name}
-                      width={100}
-                      height={100}
-                      className="h-full w-full object-cover"
-                    />
-                  </div>
-                  <div className="ml-4 flex flex-1 flex-col">
-                    <div>
-                      <div className="flex justify-between text-base font-medium text-foreground">
-                        <h3 className="pr-2">{entry.name}</h3>
-                        <p className="ml-4 shrink-0">{formatKes(entry.value)}</p>
+                <li
+                  key={entry.id}
+                  className={`grid transition-all duration-300 ease-soft ${
+                    exiting[entry.id] ? "grid-rows-[0fr] opacity-0" : "grid-rows-[1fr] opacity-100"
+                  }`}
+                >
+                  <div className="overflow-hidden">
+                    <div className="flex py-6">
+                      <div className="h-24 w-24 flex-shrink-0 overflow-hidden rounded-md border border-border bg-muted">
+                        <Image
+                          src={entry.image as string}
+                          alt={entry.name}
+                          width={100}
+                          height={100}
+                          className="h-full w-full object-cover"
+                        />
                       </div>
-                      <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">{entry.description}</p>
-                    </div>
-                    <div className="flex flex-1 items-end justify-between text-sm">
-                      <p className="text-muted-foreground">Qty {entry.quantity}</p>
-                      <button
-                        type="button"
-                        onClick={() => removeItem(entry.id)}
-                        className="font-medium text-primary transition-colors hover:text-primary/80"
-                      >
-                        Remove
-                      </button>
+                      <div className="ml-4 flex flex-1 flex-col">
+                        <div>
+                          <div className="flex justify-between text-base font-medium text-foreground">
+                            <h3 className="pr-2">{entry.name}</h3>
+                            <p className="ml-4 shrink-0">{formatKes(entry.value)}</p>
+                          </div>
+                          <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">{entry.description}</p>
+                        </div>
+                        <div className="flex flex-1 items-end justify-between text-sm">
+                          <p className="text-muted-foreground">Qty {entry.quantity}</p>
+                          <button
+                            type="button"
+                            onClick={() => remove(entry.id)}
+                            disabled={exiting[entry.id]}
+                            className="font-medium text-primary transition-colors hover:text-primary/80 disabled:opacity-50"
+                          >
+                            Remove
+                          </button>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </li>
