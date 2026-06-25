@@ -5,7 +5,8 @@ import { client } from "../lib/sanity";
 import ProductCard from "./ProductCard";
 
 async function getData() {
-  const query = `*[_type == "product"][0...8] | order(_createdAt desc) {
+  // order BEFORE slicing, or the "newest 8" are actually the first 8 in default order, then sorted.
+  const query = `*[_type == "product" && defined(images[0].asset)] | order(_createdAt desc)[0...8] {
         _id,
         price,
         price_minor,
@@ -29,7 +30,7 @@ export default async function Newest() {
           className="group inline-flex items-center gap-1.5 text-sm font-medium text-foreground transition-colors hover:text-foreground"
         >
           View all
-          <ArrowRight className="h-4 w-4 transition-transform duration-200 ease-out group-hover:translate-x-0.5" />
+          <ArrowRight className="h-4 w-4 transition-transform duration-200 ease-soft group-hover:translate-x-0.5" />
         </Link>
       </div>
 

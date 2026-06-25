@@ -55,6 +55,12 @@ export default {
   			lg: 'var(--radius)',
   			md: 'calc(var(--radius) - 2px)',
   			sm: 'calc(var(--radius) - 4px)'
+  		},
+  		transitionTimingFunction: {
+  			// Custom Béziers — never bare ease/ease-out (the #1 motion-slop tell). Per design-motion
+  			// principles: a strong ease-out for arrivals/hover/press, a smooth in-out for visible state.
+  			soft: 'cubic-bezier(0.22, 1, 0.36, 1)',
+  			'soft-in-out': 'cubic-bezier(0.65, 0, 0.35, 1)'
   		}
   	}
   },

@@ -68,7 +68,7 @@ export default function ImageGallery({ images }: iAppProps) {
             fill
             sizes="(min-width: 1024px) 50vw, 100vw"
             alt="Product image"
-            className="object-cover object-center transition-transform duration-500 ease-out motion-safe:group-hover:scale-105"
+            className="object-cover object-center transition-transform duration-500 ease-soft motion-safe:group-hover:scale-105"
           />
           <span className="pointer-events-none absolute bottom-3 right-3 rounded-full bg-background/80 px-3 py-1 text-xs font-medium text-foreground opacity-0 backdrop-blur transition-opacity duration-200 group-hover:opacity-100">
             Click to zoom

@@ -36,7 +36,7 @@ export default function NewsletterSignup() {
       <button
         type="submit"
         aria-label="Subscribe"
-        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-white text-neutral-900 transition-transform duration-150 ease-out active:scale-95"
+        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-white text-neutral-900 transition-transform duration-150 ease-soft active:scale-95"
       >
         <ArrowRight className="h-4 w-4" />
       </button>

@@ -40,7 +40,7 @@ export default async function Hero() {
               className="group inline-flex items-center gap-1.5 text-sm font-medium text-foreground"
             >
               New arrivals
-              <ArrowRight className="h-4 w-4 transition-transform duration-200 ease-out group-hover:translate-x-0.5" />
+              <ArrowRight className="h-4 w-4 transition-transform duration-200 ease-soft group-hover:translate-x-0.5" />
             </Link>
           </div>
         </div>

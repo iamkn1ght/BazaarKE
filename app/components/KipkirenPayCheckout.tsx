@@ -247,7 +247,7 @@ export default function KipkirenPayCheckout() {
         </p>
         <p className="mt-1 text-sm text-muted-foreground">Enter your PIN to pay {formatKes(total)}</p>
         <div className="mt-3 flex items-center gap-1.5 text-xs text-muted-foreground">
-          <span className="h-1.5 w-1.5 rounded-full bg-primary motion-safe:animate-pulse" />
+          <span className="h-1.5 w-1.5 rounded-full bg-primary" />
           Waiting for confirmation
         </div>
       </div>
