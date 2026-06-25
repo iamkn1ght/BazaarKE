@@ -71,7 +71,7 @@ Post-Phase-1, the storefront was rebuilt to a world-class editorial standard (Ne
 | **Kipkiren Pay** | KP-1-Ops deploy + secret + tier_3 account + Kafka creds pending; no HTTP signer | ✅ client, money.ts, Kafka consumer + inert HTTP webhook, checkout |
 | **Todoku** | tenant + 8 ULIDs + secret + UAKE sender (2-4wk CA-K) pending | ✅ client, templates, notify wired to KP + Itafika events |
 | **Itafika** | anchor + secret + callback URL pending; OPS-4 + KP acct for KP-16 | ✅ asymmetric signer, client, main-loop webhook, dispatch (inert w/o geo) |
-| **Hakken** (P2) | `unique_accessories_v1` plugin + secret pending | 🟠 design ask filed (`OPERATOR_REQUEST_HAKKEN.md`) |
+| **Hakken** (P2) | `unique_accessories_v1` plugin + secret + Identiti `aud=hakken` JWT pending | 🟢 UA scaffold **built + inert** (`app/lib/rails/hakken/*`) — §10.7 banned-key + PII walls (fail-closed, any depth), `price_range_kes` banding, isolated three-header auth, vertical-isolation filter, `getHakkenJwt` deferral; 25 tests. Operator side still 🟠 (`OPERATOR_REQUEST_HAKKEN.md`) |
 | **Helpan** (P2) | `helpan-unique-accessories-v1` agent + 3 secrets + Identiti JWKS DA key pending | 🟢 UA scaffold **built + inert** (`app/lib/rails/helpan/*`, `/api/agent/checkout`, `/api/webhooks/helpan`) — fail-closed delegated authority (RS256 vs JWKS), revocation store, dual-role dispatch target, `initiated_by:"agent"` audit; 38 tests. Operator side still 🟠 (`OPERATOR_REQUEST_HELPAN.md`) |
 
 ## 6. Adversarial-verify outcome (Week 5)

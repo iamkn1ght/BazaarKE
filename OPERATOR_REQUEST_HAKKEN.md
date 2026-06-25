@@ -3,7 +3,7 @@
 **To:** Silvia Mumbua (CTO · Kipkiren Teknolojia · Hakken rail operator)
 **From:** Unique Accessories engineering · Chamia Mutuku (CEO · KMV) · authored 24 June 2026
 **Authority:** `docs/RAIL_INTEGRATION_PLAYBOOK.md` §3.5 + §10.7 · `C:\Projects\Klokd\docs\HAKKEN_INTEGRATION_REFERENCE.md` (canonical wire) · master RECAP §8 item 3
-**Status:** 🟠 DESIGN ASK — no `unique_accessories_v1` Hakken plugin exists; nothing ships this phase. This file scopes the plugin + the credentials so the build can start when Phase 2 opens.
+**Status:** 🟠 DESIGN ASK (operator side) — no `unique_accessories_v1` Hakken plugin exists; nothing ships this phase. **UA-side scaffold is now BUILT and INERT** (`app/lib/rails/hakken/*`): the §10.7 banned-key + PII walls are enforced app-side (fail-closed, any nesting depth), `price_range_kes` banding replaces raw prices, the three-header pilot auth is isolated from the 4-rail signer, vertical isolation is filtered app-side, and `getHakkenJwt` defers until `aud=hakken` lands. Doubly inert (HAKKEN_* unset + no aud=hakken JWT). 25 unit tests.
 **Estimated operator effort:** plugin scaffold + secret issuance (~half day) + the shared `aud=hakken` JWT design (~30 min, RECAP §8 item 3 — also blocks Klokd + Lunch Drop).
 **External lead time:** DPA-2019 counsel sign-off is a Hakken-pilot precondition (platform-wide, not UA-specific).
 
@@ -55,10 +55,12 @@ Hakken enforces isolation at schema/API/ranking layers; a UA broadcast must neve
 
 | Item | Owner | Status |
 |---|---|---|
-| Hakken client isolated from the 4-rail signer (`hakken/threeHeaderAuth.ts`) | UA eng | ⏳ Phase 2 |
-| Banned-key + PII guards (incl. `source_payment` carve-out + capitalised-name pattern) | UA eng | ⏳ design (mirror Klokd commit 2c8dc8b) |
-| `price_range_kes` integer minor-units band instead of raw price | UA eng | ✅ design-locked |
-| `getHakkenJwt` deferral pattern (503 → `audit_log.action='hakken.deferred.*'`) until `aud=hakken` lands | UA eng | ⏳ design (mirror Klokd) |
+| Hakken client isolated from the 4-rail signer (`hakken/threeHeaderAuth.ts`) | UA eng | ✅ built — separate `threeHeaderAuth.ts`, never folded into `_shared/signRequest.ts` |
+| Banned-key + PII guards (incl. `source_payment` carve-out + capitalised-name pattern) | UA eng | ✅ built — `hakken/containment.ts`, fail-closed at any depth; runs before every send |
+| `price_range_kes` integer minor-units band instead of raw price | UA eng | ✅ built — `priceRangeKes()` band; builders never emit a raw `price` |
+| `getHakkenJwt` deferral pattern (503 → `audit_log.action='hakken.deferred.*'`) until `aud=hakken` lands | UA eng | ✅ built — `hakken/jwt.ts` throws `HakkenDeferredError("<op>")` (op-tagged for the audit row) |
+
+**To go live (operator):** scaffold the `unique_accessories_v1` plugin; set `HAKKEN_API_BASE` + `HAKKEN_APP_SECRET` (confirm encoding); ship Identiti multi-audience minting so `getHakkenJwt` can return an `aud=hakken` JWT (then wire it in `hakken/jwt.ts`). UA app-side walls are already enforced.
 
 ## 8. Cross-reference
 
