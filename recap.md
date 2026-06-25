@@ -72,7 +72,7 @@ Post-Phase-1, the storefront was rebuilt to a world-class editorial standard (Ne
 | **Todoku** | tenant + 8 ULIDs + secret + UAKE sender (2-4wk CA-K) pending | ✅ client, templates, notify wired to KP + Itafika events |
 | **Itafika** | anchor + secret + callback URL pending; OPS-4 + KP acct for KP-16 | ✅ asymmetric signer, client, main-loop webhook, dispatch (inert w/o geo) |
 | **Hakken** (P2) | `unique_accessories_v1` plugin + secret pending | 🟠 design ask filed (`OPERATOR_REQUEST_HAKKEN.md`) |
-| **Helpan** (P2) | `helpan-unique-accessories-v1` agent + 3 secrets pending | 🟠 design ask filed (`OPERATOR_REQUEST_HELPAN.md`) |
+| **Helpan** (P2) | `helpan-unique-accessories-v1` agent + 3 secrets + Identiti JWKS DA key pending | 🟢 UA scaffold **built + inert** (`app/lib/rails/helpan/*`, `/api/agent/checkout`, `/api/webhooks/helpan`) — fail-closed delegated authority (RS256 vs JWKS), revocation store, dual-role dispatch target, `initiated_by:"agent"` audit; 38 tests. Operator side still 🟠 (`OPERATOR_REQUEST_HELPAN.md`) |
 
 ## 6. Adversarial-verify outcome (Week 5)
 
@@ -108,7 +108,7 @@ Post-Phase-1, the storefront was rebuilt to a world-class editorial standard (Ne
 
 ## 10. Tech debt
 
-- Handler-level integration tests (dedup release, forward-only transitions, webhook verify) need a Sanity/KV mock harness — deferred (the logic is adversarial-verify-confirmed; signing + money + price-guard are unit-tested, 34 cases).
+- ~~Handler-level integration tests (dedup release, forward-only transitions) need a Sanity/KV mock harness — deferred.~~ **Done:** the KP/Itafika handlers were split functional-core/imperative-shell and the orchestration is now unit-tested (forward-only transitions, dedup claim/release, side-effects-only-on-apply, swallowed comms failures) via injected deps — no live Sanity/KV needed. Suite is now **132 tests** (was 34): + geocoded-delivery geo helpers, dedup/trace, KP/Itafika transitions + orchestration, and the Helpan agent-runtime (authority/RS256/revocation/dispatch). Tests run under `node --conditions=react-server` (`server-only` devDep resolves to its inert stub).
 - README "Checkout flow" still describes PayPal — rewrite for the KP STK-push flow before launch.
 - Cart carries `price_minor`; until `npm run migrate:sanity -- --apply` runs, products fall back to `price*100`.
 - Checkout lacks a geocoded shipping-address step → Itafika dispatch + cart delivery-fee quote are wired-but-inert.

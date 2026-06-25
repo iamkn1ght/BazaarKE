@@ -33,6 +33,27 @@ export default {
       description: 'Identiti customer FK (acc_<uuid>). Primary FK for every order. tier-0 for anonymous express.',
     },
     {
+      name: 'initiated_by',
+      title: 'Initiated by',
+      type: 'string',
+      group: 'rail',
+      initialValue: 'customer',
+      options: {
+        list: [
+          { title: 'Customer (human checkout)', value: 'customer' },
+          { title: 'Agent (Helpan auto-refill)', value: 'agent' },
+        ],
+      },
+      description: 'Who placed the order. "agent" = a Helpan delegated-authority dispatch (Phase 2).',
+    },
+    {
+      name: 'agent_id',
+      title: 'Helpan agent ID',
+      type: 'string',
+      group: 'rail',
+      description: 'Set only when initiated_by="agent" — the Helpan agent (e.g. helpan-unique-accessories-v1).',
+    },
+    {
       name: 'state',
       title: 'State',
       type: 'string',
@@ -150,6 +171,8 @@ export default {
             { name: 'request_id', type: 'string', title: 'Rail request_id (meta.request_id)' },
             { name: 'traceparent', type: 'string', title: 'Traceparent' },
             { name: 'business_op_id', type: 'string', title: 'Business op ID' },
+            { name: 'initiated_by', type: 'string', title: 'Initiated by (customer | agent)' },
+            { name: 'agent_id', type: 'string', title: 'Helpan agent ID (agent-initiated calls)' },
             { name: 'timestamp', type: 'datetime', title: 'Timestamp' },
             { name: 'success', type: 'boolean', title: 'Success' },
             { name: 'error_code', type: 'string', title: 'Error code' },
