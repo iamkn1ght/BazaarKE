@@ -13,7 +13,12 @@ const categories = [
 
 async function getData() {
   const query = "*[_type == 'heroImage'] {image1, image2}";
-  return client.fetch(query);
+  try {
+    return await client.fetch(query);
+  } catch (err) {
+    console.error("[hero] Sanity fetch failed; rendering without hero images:", err instanceof Error ? err.message : err);
+    return [];
+  }
 }
 
 export default async function Hero() {

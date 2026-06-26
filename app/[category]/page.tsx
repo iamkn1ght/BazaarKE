@@ -3,6 +3,8 @@ import { simplifiedProduct } from "../interface";
 import { client } from "../lib/sanity";
 import ProductExplorer from "../components/ProductExplorer";
 
+export const revalidate = 300; // ISR — keep category pages fresh + resilient to a Sanity hiccup.
+
 async function getData(category: string) {
   const query = `*[_type == "product" && category->name == $category] {
         _id,
@@ -13,7 +15,12 @@ async function getData(category: string) {
         "slug": slug.current,
         "categoryName": category->name
     }`;
-  return client.fetch<simplifiedProduct[]>(query, { category });
+  try {
+    return await client.fetch<simplifiedProduct[]>(query, { category });
+  } catch (err) {
+    console.error("[category] Sanity fetch failed; rendering empty:", err instanceof Error ? err.message : err);
+    return [];
+  }
 }
 
 export async function generateMetadata({ params }: { params: Promise<{ category: string }> }): Promise<Metadata> {

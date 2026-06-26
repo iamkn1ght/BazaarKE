@@ -7,14 +7,22 @@ interface SitemapRow {
 }
 
 async function getProducts(): Promise<SitemapRow[]> {
-    return client.fetch(`*[_type == "product" && defined(slug.current)] {
-        "slug": slug.current,
-        "updatedAt": _updatedAt
-    }`);
+    try {
+        return await client.fetch(`*[_type == "product" && defined(slug.current)] {
+            "slug": slug.current,
+            "updatedAt": _updatedAt
+        }`);
+    } catch {
+        return []; // a Sanity hiccup must not fail the build — emit the static routes only
+    }
 }
 
 async function getCategories(): Promise<{ name: string }[]> {
-    return client.fetch(`*[_type == "category" && defined(name)] { name }`);
+    try {
+        return await client.fetch(`*[_type == "category" && defined(name)] { name }`);
+    } catch {
+        return [];
+    }
 }
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {

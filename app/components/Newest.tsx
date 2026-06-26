@@ -15,7 +15,13 @@ async function getData() {
         "categoryName": category->name,
         "imageUrl": images[0].asset->url
     }`;
-  return client.fetch<simplifiedProduct[]>(query);
+  // Degrade gracefully: a Sanity hiccup must not crash the prerender / fail the build. ISR refills it.
+  try {
+    return await client.fetch<simplifiedProduct[]>(query);
+  } catch (err) {
+    console.error("[home] Newest fetch failed; rendering empty:", err instanceof Error ? err.message : err);
+    return [];
+  }
 }
 
 export default async function Newest() {

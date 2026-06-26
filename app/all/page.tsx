@@ -7,6 +7,10 @@ export const metadata = {
   description: "Browse every product in the BazaarKE catalog.",
 };
 
+// ISR: prerender at build, revalidate every 5 min so the catalog reflects Sanity edits without a
+// redeploy — and self-heals if a build-time fetch ever came back empty.
+export const revalidate = 300;
+
 async function getData() {
   const query = `*[_type == "product"] | order(_createdAt desc) {
         _id,
@@ -17,7 +21,12 @@ async function getData() {
         "categoryName": category->name,
         "imageUrl": images[0].asset->url
     }`;
-  return client.fetch<simplifiedProduct[]>(query);
+  try {
+    return await client.fetch<simplifiedProduct[]>(query);
+  } catch (err) {
+    console.error("[/all] Sanity fetch failed; rendering empty catalog:", err instanceof Error ? err.message : err);
+    return [];
+  }
 }
 
 export default async function AllProductsPage() {
