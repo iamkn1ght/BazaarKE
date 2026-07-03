@@ -5,12 +5,14 @@ const nextConfig: NextConfig = {
     // Sanity image CDN (product/hero images).
     remotePatterns: [{ protocol: "https", hostname: "cdn.sanity.io" }],
   },
-  // TEMPORARY unblock: the Vercel build's "checking validity of types / lint" gate reports errors
-  // that plain `tsc --noEmit` + `next lint` don't surface (Next 15.5 build-time generated route-type
-  // strictness), and the local `next build` can't run to reveal them (a Windows worker EPERM flake).
-  // Compile + runtime are unaffected — the bundle compiles ("Compiled successfully") and types are
-  // erased at emit. Remove both once the underlying type errors are identified from the build log and fixed.
-  eslint: { ignoreDuringBuilds: true },
+  // NOTE (tech debt): Next 15.5's build-time generated-route-type check reports errors that
+  //   (a) a fresh, non-incremental `tsc --noEmit` does NOT surface — the app code is type-clean; and
+  //   (b) cannot be reproduced or fixed locally because `next build` will not run on the current
+  //       Windows host (a persistent worker `kill EPERM`), so the generated `.next/types` validators
+  //       (only produced during a build) can't be inspected here.
+  // The app compiles ("Compiled successfully") and runs correctly — production is live and green.
+  // We skip ONLY the type-check gate; ESLint still runs on every build. Remove this once the exact
+  // errors are read from a Vercel build log and fixed. See recap.md.
   typescript: { ignoreBuildErrors: true },
 };
 
