@@ -51,6 +51,7 @@ Post-Phase-1, the storefront was rebuilt to a world-class editorial standard (Ne
 | `f77bd64` | 3 Jul | Upgrade Next.js 15.1.0 → 15.5.19 (Vercel rejected the vulnerable version) |
 | `a15d2db` | 3 Jul | Restore ESLint gate; keep only the documented type-check skip |
 | `aeb6259` | 15 Jul | Theme-adaptive vector logo (cart + Bazaar/KE) in nav + footer — flips across light/dark + dark footer via `currentColor` + `text-primary`; zero image assets |
+| `07475b5` | 15 Jul | Checkout delivery pin shows a **place name** (e.g. "Kilimani, Nairobi"), not raw coordinates — new `/api/checkout/reverse-geocode` (OSM Nominatim, keyless; cache + rate-cap + fail-open); display-only, rider still dispatched to the exact lat/lng |
 
 ## 3. Sprint state
 
@@ -64,7 +65,7 @@ Post-Phase-1, the storefront was rebuilt to a world-class editorial standard (Ne
 | Polish | Storefront redesign | 🟢 DONE | Editorial NB/Adidas/Eastern-Edition pass; Geist font fix; image-forward cards; hero; sticky nav + mobile menu; dark footer |
 | Polish | UX features | 🟢 DONE | Light/dark mode (next-themes + tokens); CSS scroll-reveal; gallery lightbox; catalog filter/sort; breadcrumbs; related products; empty-cart; loading skeletons |
 | Polish | Brand rename | 🟢 DONE | Unique Accessories → **BazaarKE** (display + metadata). Rail slug `unique_accessories` + legal entity unchanged |
-| BZ-Ops | Geocoded delivery step | 🟢 DONE | Required + server-validated `shipping_destination` (GPS pin / paste, KE service-area); graceful delivery-fee quote; un-inerts Itafika dispatch once origin+creds land |
+| BZ-Ops | Geocoded delivery step | 🟢 DONE | Required + server-validated `shipping_destination` (GPS pin / paste, KE service-area); graceful delivery-fee quote; pin shows a reverse-geocoded **place name** (not coordinates) via `/api/checkout/reverse-geocode` (Nominatim, fail-open); un-inerts Itafika dispatch once origin+creds land |
 | Tests | Money-critical handler coverage | 🟢 DONE | KP/Itafika handlers → functional-core/shell; orchestration unit-tested (forward-only, dedup claim/release, side-effects-only-on-apply, swallowed comms failures) |
 | BZ-P2-Hp | Helpan agent runtime | 🟢 BUILT (inert) | RS256 delegated-authority (vs Identiti JWKS) + claim validation; revocation store + AUTHORITY_REVOKED webhook; dual-role `/api/agent/checkout`; `initiated_by:"agent"` audit; fail-closed |
 | BZ-P2-Hk | Hakken discovery | 🟢 BUILT (inert) | §10.7 banned-key + PII walls (any-depth, fail-closed); `price_range_kes` band; isolated three-header auth; vertical-isolation filter; `getHakkenJwt` deferral |
@@ -142,7 +143,7 @@ The entire backlog is **code-complete**. What's left is operator provisioning + 
 - **Docs:** `docs/RAIL_INTEGRATION_PLAYBOOK.md`, `docs/KMV_RAILS_INTEGRATION_GUIDE.md` (wire), `docs/PAYPAL_REMOVAL_RUNBOOK.md` + `_RESULT.md`, `docs/{KP,TODOKU,ITAFIKA}_INTEGRATION_RESULT.md`, `docs/DEPLOYMENT_READINESS.md`
 - **Operator requests:** `OPERATOR_REQUEST_{CHAMIA,IDENTITI,KP,TODOKU,ITAFIKA,HAKKEN,HELPAN}.md`
 - **Smoke:** `npm run smoke:{identiti,payment-rail,todoku,itafika}`
-- **Rail code:** `app/lib/rails/{_shared,identiti,payment-rail,todoku,itafika,helpan,hakken}/`; webhooks `app/api/webhooks/{identiti,payment-rail,itafika,helpan}/`; checkout `app/api/checkout/{initiate,status,delivery-quote}/`; agent dispatch target `app/api/agent/checkout/`
+- **Rail code:** `app/lib/rails/{_shared,identiti,payment-rail,todoku,itafika,helpan,hakken}/`; webhooks `app/api/webhooks/{identiti,payment-rail,itafika,helpan}/`; checkout `app/api/checkout/{initiate,status,delivery-quote,reverse-geocode}/`; agent dispatch target `app/api/agent/checkout/`
 
 ## 10. Tech debt
 
@@ -154,7 +155,8 @@ The entire backlog is **code-complete**. What's left is operator provisioning + 
 - **`next.config.ts` skips the build-time type-check** (`typescript.ignoreBuildErrors`, `a15d2db`). Next 15.5's generated `.next/types` route validators report ~4 errors that a fresh non-incremental `tsc --noEmit` does NOT (the app code is type-clean, runtime unaffected — prod is live). They can't be reproduced/fixed locally because `next build` won't run on the Windows dev host (worker `kill EPERM`), and the validators only exist during a build. ESLint still gates. **To close:** read the 4 error blocks from a Vercel build log (push a temporarily-clean config so the failing build prints them — prod is unaffected, Vercel serves the last green deploy), fix, then remove the skip.
 - **Vercel deploy is a storefront preview, not production go-live.** Provision Vercel KV, set the rail env vars (§7), and register callback URLs before taking live payments/webhooks. Preview/branch aliases are login-gated (Vercel Deployment Protection) — disable it in Settings if public preview URLs are wanted.
 - **Brand assets incomplete.** The wordmark ships as a theme-adaptive vector (`app/components/Logo.tsx`), but the browser-tab **favicon** + social **OG image** still use Next defaults — generate both from the logo mark. If the literal cart-inside-the-"B" raster is wanted (vs. the current cart-glyph + wordmark), drop the source image into `public/` and swap in transparent light/dark variants.
+- **Reverse-geocode uses keyless Nominatim.** `/api/checkout/reverse-geocode` resolves the pin's place name via OSM Nominatim (no key). It's fail-open (falls back to "Location pinned", never coordinates), but Nominatim rate-limits shared cloud IPs so a name isn't guaranteed on every prod call. For reliable resolution, swap `reverseGeocode()` for a keyed provider (Google Geocoding / Mapbox / LocationIQ) + one env var — the route/cache/UI around it stay unchanged.
 
 ---
 
-*BazaarKE Rail Integration + Storefront RECAP v1.5 · updated 15 July 2026 · Phase 1 code-complete + adversarially verified; geocoded delivery step; Phase-2 Helpan + Hakken UA scaffolds (inert, fail-closed); storefront motion-polished; theme-adaptive vector logo; **deployed public at bazaar-ke.vercel.app**; operator-gated for live rails · Delta from v1.4: §7 restructured into a single grouped "remaining work" checklist (all non-code); theme-adaptive logo (`aeb6259`); favicon/OG flagged as remaining brand assets*
+*BazaarKE Rail Integration + Storefront RECAP v1.6 · updated 15 July 2026 · Phase 1 code-complete + adversarially verified; geocoded delivery step (pin shows a place name, not coordinates); Phase-2 Helpan + Hakken UA scaffolds (inert, fail-closed); storefront motion-polished; theme-adaptive vector logo; **deployed public at bazaar-ke.vercel.app**; operator-gated for live rails · Delta from v1.5: checkout delivery pin reverse-geocoded to a readable place name (`07475b5`, `/api/checkout/reverse-geocode`, keyless Nominatim, fail-open, display-only)*
