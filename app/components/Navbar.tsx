@@ -7,6 +7,7 @@ import { Menu, ShoppingBag } from "lucide-react";
 import { useShoppingCart } from "use-shopping-cart";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import ThemeToggle from "./ThemeToggle";
+import Logo from "./Logo";
 
 const links = [
   { name: "All", href: "/all" },
@@ -34,8 +35,8 @@ export default function Navbar() {
           >
             <Menu className="h-5 w-5" />
           </button>
-          <Link href="/" className="text-xl font-bold tracking-tight text-foreground md:text-2xl">
-            Bazaar<span className="text-primary">KE</span>
+          <Link href="/" aria-label="BazaarKE home" className="text-xl font-bold tracking-tight text-foreground md:text-2xl">
+            <Logo />
           </Link>
         </div>
 

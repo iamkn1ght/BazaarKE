@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Facebook, Instagram, Twitter } from "lucide-react";
 import NewsletterSignup from "./NewsletterSignup";
+import Logo from "./Logo";
 
 type FooterLink = { name: string; href: string };
 
@@ -45,8 +46,8 @@ export default function Footer() {
       <div className="container-x py-16">
         <div className="grid gap-12 lg:grid-cols-2">
           <div className="max-w-md">
-            <Link href="/" className="text-2xl font-bold tracking-tight">
-              Bazaar<span className="text-primary">KE</span>
+            <Link href="/" aria-label="BazaarKE home" className="text-2xl font-bold tracking-tight">
+              <Logo />
             </Link>
             <p className="mt-4 text-sm leading-relaxed text-neutral-400">
               Hand-picked electronics, kitchenware, furniture and accessories. Pay with M-Pesa, delivered across Kenya.
