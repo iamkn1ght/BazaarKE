@@ -23,10 +23,6 @@ const LABEL_MIN = 3;
 const RING_R = 42;
 const RING_C = 2 * Math.PI * RING_R;
 
-function fmtCoords(c: Coords): string {
-  return `${c.lat.toFixed(5)}, ${c.lng.toFixed(5)}`;
-}
-
 export default function KipkirenPayCheckout() {
   const router = useRouter();
   const { cartDetails, totalPrice, cartCount, clearCart, handleCartClick } = useShoppingCart();
@@ -44,6 +40,10 @@ export default function KipkirenPayCheckout() {
   const [manualOpen, setManualOpen] = useState(false);
   const [manualText, setManualText] = useState("");
   const [quote, setQuote] = useState<Quote | null>(null);
+  // Human-readable place name for the pin (e.g. "Kilimani, Nairobi"), shown instead of raw
+  // coordinates. Display-only — the exact lat/lng are still what the rider is dispatched to.
+  const [placeName, setPlaceName] = useState<string | null>(null);
+  const [placeLoading, setPlaceLoading] = useState(false);
 
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const tickRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -96,6 +96,36 @@ export default function KipkirenPayCheckout() {
         if (!ctrl.signal.aborted && res.ok) setQuote(data as Quote);
       } catch {
         /* best-effort — a failed quote just shows the calm fallback line */
+      }
+    })();
+    return () => ctrl.abort();
+  }, [coords]);
+
+  // Reverse-geocode the pin to a readable place name for display (falls back to a neutral
+  // "Location pinned" if it can't be resolved — never blocks checkout).
+  useEffect(() => {
+    if (!coords) {
+      setPlaceName(null);
+      setPlaceLoading(false);
+      return;
+    }
+    const ctrl = new AbortController();
+    setPlaceName(null);
+    setPlaceLoading(true);
+    (async () => {
+      try {
+        const res = await fetch("/api/checkout/reverse-geocode", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ destination: { lat: coords.lat, lng: coords.lng } }),
+          signal: ctrl.signal,
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!ctrl.signal.aborted && res.ok && typeof data.name === "string") setPlaceName(data.name);
+      } catch {
+        /* best-effort — the pin chip just shows "Location pinned" */
+      } finally {
+        if (!ctrl.signal.aborted) setPlaceLoading(false);
       }
     })();
     return () => ctrl.abort();
@@ -304,12 +334,22 @@ export default function KipkirenPayCheckout() {
             aria-live="polite"
             className="flex items-center justify-between gap-2 rounded-md border border-primary/30 bg-primary/5 px-2.5 py-1.5 text-xs"
           >
-            <span className="inline-flex items-center gap-1.5 font-medium text-foreground">
-              <Check className="h-3.5 w-3.5 text-primary" />
-              Location pinned
-              <span className="font-normal tabular-nums text-muted-foreground">{fmtCoords(coords)}</span>
+            <span className="inline-flex min-w-0 items-center gap-1.5 font-medium text-foreground">
+              <Check className="h-3.5 w-3.5 shrink-0 text-primary" />
+              {placeLoading ? (
+                <span className="inline-flex items-center gap-1.5 font-normal text-muted-foreground">
+                  <Loader2 className="h-3 w-3 animate-spin motion-safe:[animation-duration:0.7s]" />
+                  Finding address…
+                </span>
+              ) : (
+                <span className="truncate">{placeName ?? "Location pinned"}</span>
+              )}
             </span>
-            <button type="button" onClick={clearPin} className="font-medium text-primary transition-colors hover:text-primary/80">
+            <button
+              type="button"
+              onClick={clearPin}
+              className="shrink-0 font-medium text-primary transition-colors hover:text-primary/80"
+            >
               Change
             </button>
           </div>
