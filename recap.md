@@ -50,6 +50,7 @@ Post-Phase-1, the storefront was rebuilt to a world-class editorial standard (Ne
 | `81827bf` | 1 Jul | Harden build-time Sanity fetches + ISR (resilient prerender) |
 | `f77bd64` | 3 Jul | Upgrade Next.js 15.1.0 → 15.5.19 (Vercel rejected the vulnerable version) |
 | `a15d2db` | 3 Jul | Restore ESLint gate; keep only the documented type-check skip |
+| `aeb6259` | 15 Jul | Theme-adaptive vector logo (cart + Bazaar/KE) in nav + footer — flips across light/dark + dark footer via `currentColor` + `text-primary`; zero image assets |
 
 ## 3. Sprint state
 
@@ -102,9 +103,26 @@ Post-Phase-1, the storefront was rebuilt to a world-class editorial standard (Ne
 - **Major (6):** unpriced-product render crash + schema root cause (guard + `price_minor` required); order state-machine clobbering (forward-only transition guards, KP + Itafika); guest `createCustomer` orphans on retry (per-attempt idempotency); KP + Itafika audit rows missing `traceparent` (now recovered from the order).
 - **Minor/nit (7):** cart line showed unit not line total; unbounded quantity (capped + safe-int); unsigned Itafika event-header merge (dropped + enum allowlist); `unknown` dedup collision (id-less → non-dedupable); charge audit missing `request_id` (threaded); short dedup TTL (→ 24h); orphan-PENDING on charge failure (patched to FAILED).
 
-## 7. Outstanding blockers
+## 7. Remaining work (all non-code — everything codeable is done, deployed, pushed)
 
-**Operator (Silvia):** Identiti sandbox secret (queue) + multi-audience minting for `aud=hakken` + JWKS delegated-authority key (Helpan); KP-1-Ops deploy + secret + tier_3 + Kafka creds + HTTP signer; Todoku tenant/ULIDs/secret/UAKE; Itafika anchor/secret/callback + OPS-4; Hakken plugin/secret; Helpan agent/secrets. **Chamia:** CHAMIA-ENTITY registration date (gates KP tier_3). **UA:** provision Vercel KV; deploy the Kafka consumer worker; run the KES re-price migration; set `ITAFIKA_ORIGIN_LAT/LNG` (store pickup point — last gate to un-inert dispatch now that the delivery step ships). Full checklist: `docs/DEPLOYMENT_READINESS.md`.
+The entire backlog is **code-complete**. What's left is operator provisioning + Phase-2 operator-side registration + minor UA tech debt. This is the single source of truth; full checklist in `docs/DEPLOYMENT_READINESS.md`.
+
+**BZ-Ops — Operator-gated go-live 🔴 BLOCKED** (only thing between code-complete and live rails):
+
+| Owner | Remaining |
+|---|---|
+| Silvia — Identiti | `unique_accessories_sandbox` HMAC secret (4th in stale-secret queue) |
+| Silvia — Kipkiren Pay | KP-1-Ops Railway deploy + `PAYMENT_RAIL_API_BASE` + `PAYMENT_RAIL_APP_SECRET` + corporate **tier_3** `account_uuid` + Kafka broker creds/ACLs + (later) HTTP webhook signer |
+| Silvia — Todoku | external tenant + 8 template ULIDs + `TODOKU_APP_SECRET` + **`UAKE`** sender ID (2–4 wk CA-K regulatory lead) |
+| Silvia — Itafika | `unique_accessories` anchor + `ITAFIKA_APP_SECRET` + webhook callback URL + OPS-4 (UA's KP `account_uuid` on the anchor, for KP-16 fee charging) |
+| Chamia | CHAMIA-ENTITY registration date (gates KP tier_3) |
+| UA-eng (once creds land) | provision **Vercel KV** (`KV_REST_API_URL`/`_TOKEN` — required before live webhooks, dedup); set rail env vars in Vercel; deploy the **Kafka consumer** (`scripts/kp-kafka-consumer.ts`) as a standalone worker (not a Vercel function); run `npm run migrate:sanity -- --apply` (KES re-price); set **`ITAFIKA_ORIGIN_LAT/LNG`** (store pickup — last gate to un-inert dispatch); register callback URLs; smoke each rail |
+
+**BZ-P2-Hk — Hakken:** UA scaffold ✅ built + inert. Pending **Silvia**: register `unique_accessories_v1` plugin + `HAKKEN_APP_SECRET`; Identiti multi-audience minting so a JWT can carry `aud=hakken` → then wire the resolver. (`OPERATOR_REQUEST_HAKKEN.md`)
+
+**BZ-P2-Hp — Helpan:** UA scaffold ✅ built + inert. Pending **Silvia**: register `helpan-unique-accessories-v1` agent + the 3 `HELPAN_*` secrets; Identiti JWKS **delegated-authority key** → then wire the inert resolver in `agent-checkout.ts`. (`OPERATOR_REQUEST_HELPAN.md`)
+
+**UA-eng tech debt (code, non-blocking):** see §10 — the `next.config.ts` type-check skip, README PayPal copy, placeholder catalog prices, and optional favicon/OG from the new logo.
 
 ## 8. Architecture invariants (locked)
 
@@ -135,7 +153,8 @@ Post-Phase-1, the storefront was rebuilt to a world-class editorial standard (Ne
 - Phase-2 go-live (Helpan/Hakken) needs Identiti multi-audience JWTs + JWKS DA key + the respective plugin/agent registration before the inert scaffolds activate.
 - **`next.config.ts` skips the build-time type-check** (`typescript.ignoreBuildErrors`, `a15d2db`). Next 15.5's generated `.next/types` route validators report ~4 errors that a fresh non-incremental `tsc --noEmit` does NOT (the app code is type-clean, runtime unaffected — prod is live). They can't be reproduced/fixed locally because `next build` won't run on the Windows dev host (worker `kill EPERM`), and the validators only exist during a build. ESLint still gates. **To close:** read the 4 error blocks from a Vercel build log (push a temporarily-clean config so the failing build prints them — prod is unaffected, Vercel serves the last green deploy), fix, then remove the skip.
 - **Vercel deploy is a storefront preview, not production go-live.** Provision Vercel KV, set the rail env vars (§7), and register callback URLs before taking live payments/webhooks. Preview/branch aliases are login-gated (Vercel Deployment Protection) — disable it in Settings if public preview URLs are wanted.
+- **Brand assets incomplete.** The wordmark ships as a theme-adaptive vector (`app/components/Logo.tsx`), but the browser-tab **favicon** + social **OG image** still use Next defaults — generate both from the logo mark. If the literal cart-inside-the-"B" raster is wanted (vs. the current cart-glyph + wordmark), drop the source image into `public/` and swap in transparent light/dark variants.
 
 ---
 
-*BazaarKE Rail Integration + Storefront RECAP v1.4 · updated 3 July 2026 · Phase 1 code-complete + adversarially verified; geocoded delivery step; Phase-2 Helpan + Hakken UA scaffolds (inert, fail-closed); storefront motion-polished; **deployed public at bazaar-ke.vercel.app**; operator-gated for live rails · Delta from v1.3: Vercel deploy (Next 15.5.19 security upgrade + resilient prerender/ISR; one documented build-time type-check skip pending a build-log read)*
+*BazaarKE Rail Integration + Storefront RECAP v1.5 · updated 15 July 2026 · Phase 1 code-complete + adversarially verified; geocoded delivery step; Phase-2 Helpan + Hakken UA scaffolds (inert, fail-closed); storefront motion-polished; theme-adaptive vector logo; **deployed public at bazaar-ke.vercel.app**; operator-gated for live rails · Delta from v1.4: §7 restructured into a single grouped "remaining work" checklist (all non-code); theme-adaptive logo (`aeb6259`); favicon/OG flagged as remaining brand assets*
